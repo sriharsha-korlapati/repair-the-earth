@@ -107,21 +107,18 @@ st.markdown("""
     display:flex;
     align-items:center;
     justify-content:center;
-    gap:10px;
-    margin-top:-35px;
-    padding-top:0;
+    gap:8px;
+    margin-top:-10px;
 ">
-    <img src="assets/logo.png" width="34" />
-    <h1 style="margin:0; padding:0; line-height:1;">
-        Repair the Earth
-    </h1>
+    <img src="repair-the-earth/main/assets/logo.png"
+         width="36" />
+    <h1 style="margin:0; padding:0;">Repair the Earth</h1>
 </div>
 
 <p style="
     text-align:center;
     color:#9ca3af;
-    margin-top:-8px;
-    margin-bottom:6px;
+    margin-top:-6px;
 ">
 Carbon intelligence for everyday actions
 </p>
