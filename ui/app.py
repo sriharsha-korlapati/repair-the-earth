@@ -34,7 +34,7 @@ st.set_page_config(
     layout="centered"
 )
 st.markdown(
-    "<style>section.main { padding-top: 0.2rem; }</style>",
+    "<style>section.main { padding-top: 1.5rem; }</style>",
     unsafe_allow_html=True
 )
 
@@ -110,7 +110,7 @@ st.markdown("""
     gap:8px;
     margin-top:-10px;
 ">
-    <img src="https://raw.githubusercontent.com/sriharsha-korlapati/repair-the-earth/main/assets/logo.png"
+    <img src="/repair-the-earth/main/assets/logo.png"
          width="36" />
     <h1 style="margin:0; padding:0;">Repair the Earth</h1>
 </div>
