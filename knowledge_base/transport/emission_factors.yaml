@@ -1,0 +1,29 @@
+walk:
+  co2_per_km: 0
+
+cycle:
+  co2_per_km: 0
+
+wfh:
+  co2_per_km: 0
+
+bike:
+  co2_per_km: 0.07
+
+bus:
+  co2_per_km: 0.05
+
+metro:
+  co2_per_km: 0.01
+
+car_petrol:
+  co2_per_km: 0.12
+
+car_diesel:
+  co2_per_km: 0.14
+
+car_cng:
+  co2_per_km: 0.10
+
+car_ev:
+  co2_per_km: 0.04

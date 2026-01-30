@@ -1,0 +1,4 @@
+india:
+  electricity:
+    kg_co2_per_kwh: 0.708
+    source: "CEA India Grid Emission Factor"
