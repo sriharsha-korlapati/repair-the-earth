@@ -110,7 +110,7 @@ st.markdown("""
     gap:8px;
     margin-top:-10px;
 ">
-    <img src="repair-the-earth/main/assets/logo.png"
+    <img src="/assets/logo.png"
          width="36" />
     <h1 style="margin:0; padding:0;">Repair the Earth</h1>
 </div>
