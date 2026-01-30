@@ -1,0 +1,11 @@
+[theme]
+primaryColor = "#2E7D32"        # Green (Repair the Earth vibe)
+backgroundColor = "#F5F7F6"
+secondaryBackgroundColor = "#E8F5E9"
+textColor = "#263238"
+font = "sans serif"
+
+[server]
+headless = true
+enableCORS = false
+enableXsrfProtection = false
