@@ -3,6 +3,23 @@ import os
 import streamlit as st
 import time
 
+st.markdown("""
+<style>
+.block-container {
+    padding-top: 1rem !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+import base64
+
+def get_base64_logo(path: str) -> str:
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+encoded_logo = get_base64_logo("assets/logo.png")
+
+
 # -----------------------------
 # Project Path Setup
 # -----------------------------
@@ -107,23 +124,28 @@ st.markdown("""
     display:flex;
     align-items:center;
     justify-content:center;
-    gap:8px;
-    margin-top:-10px;
+    gap:10px;
+    margin-top:0;
 ">
-    <img src="/assets/logo.png"
-         width="36" />
-    <h1 style="margin:0; padding:0;">Repair the Earth</h1>
+    <img src="data:image/png;base64,{}"
+         style="height:36px; width:36px;" />
+    <h1 style="
+        margin:0;
+        padding:0;
+        line-height:1;
+    ">
+        Repair the Earth
+    </h1>
 </div>
 
 <p style="
     text-align:center;
     color:#9ca3af;
-    margin-top:-6px;
+    margin:6px 0 14px 0;
 ">
 Carbon intelligence for everyday actions
 </p>
-""", unsafe_allow_html=True)
-
+""".format(encoded_logo), unsafe_allow_html=True)
 
 
 # -----------------------------
