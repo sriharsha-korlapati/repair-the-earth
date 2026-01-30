@@ -33,6 +33,10 @@ st.set_page_config(
     page_title="Repair the Earth – Carbon Intelligence",
     layout="centered"
 )
+st.markdown(
+    "<style>section.main { padding-top: 0.2rem; }</style>",
+    unsafe_allow_html=True
+)
 
 # -----------------------------
 # Styles (UNCHANGED)
@@ -99,11 +103,28 @@ h1, h2 { color: #e5e7eb; }
 # Header
 # -----------------------------
 st.markdown("""
-<h1 style="text-align:center;">🌱 Repair the Earth</h1>
-<p style="text-align:center;color:#9ca3af;">
+<div style="
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    margin-top:-10px;
+">
+    <img src="https://raw.githubusercontent.com/sriharsha-korlapati/repair-the-earth/main/assets/logo.png"
+         width="36" />
+    <h1 style="margin:0; padding:0;">Repair the Earth</h1>
+</div>
+
+<p style="
+    text-align:center;
+    color:#9ca3af;
+    margin-top:-6px;
+">
 Carbon intelligence for everyday actions
 </p>
 """, unsafe_allow_html=True)
+
+
 
 # -----------------------------
 # SINGLE CLICKABLE PILL NAV (UNCHANGED)
@@ -117,6 +138,24 @@ modules = [
 
 for col, (label, key) in zip(cols, modules):
     with col:
+        is_active = st.session_state.module == key
+        btn_style = """
+            background-color: #22c55e;
+            color: #052e16;
+            border: 1px solid #22c55e;
+        """ if is_active else ""
+
+        st.markdown(f"""
+        <style>
+        div[data-testid="stButton"][data-key="nav-{key}"] button {{
+            {btn_style}
+            border-radius: 999px;
+            padding: 0.55rem 1.2rem;
+            font-size: 0.85rem;
+        }}
+        </style>
+        """, unsafe_allow_html=True)
+
         if st.button(label, key=f"nav-{key}", use_container_width=True):
             st.session_state.module = key
 
