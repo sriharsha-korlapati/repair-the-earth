@@ -245,7 +245,7 @@ if st.session_state.module == "commute":
 
     st.markdown("### 🔎 What this equals to")
     r1, r2, r3 = st.columns(3)
-    r1.markdown(f"<div class='card'>🌳 {yearly_co2 / TREE_CO2_YEAR:.1f} trees</div>", unsafe_allow_html=True)
+    r1.markdown(f"<div class='card'>🌳 {yearly_co2 / TREE_CO2_YEAR:.1f} trees / year</div>", unsafe_allow_html=True)
     r2.markdown(f"<div class='card'>📱 {monthly_co2 / PHONE_CHARGE_CO2:.0f} phone charges</div>", unsafe_allow_html=True)
     r3.markdown(f"<div class='card'>💰 ₹{monthly_cost:.0f} / month</div>", unsafe_allow_html=True)
 
@@ -279,7 +279,7 @@ if st.session_state.module == "appliances":
 
     st.markdown("### 🔎 What this equals to")
     r1, r2, r3 = st.columns(3)
-    r1.markdown(f"<div class='card'>🌳 {yearly_co2 / TREE_CO2_YEAR:.1f} trees</div>", unsafe_allow_html=True)
+    r1.markdown(f"<div class='card'>🌳 {yearly_co2 / TREE_CO2_YEAR:.1f} trees / year</div>", unsafe_allow_html=True)
     r2.markdown(f"<div class='card'>📱 {monthly_co2 / PHONE_CHARGE_CO2:.0f} phone charges</div>", unsafe_allow_html=True)
     r3.markdown(f"<div class='card'>💰 ₹{monthly_cost:.0f} / month</div>", unsafe_allow_html=True)
 

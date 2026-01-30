@@ -34,9 +34,14 @@ def transport_impact_pipeline(mode: str, distance_km: float, days_per_week: int)
     TREE_CO2_YEAR = 21.0       # kg
     PHONE_CHARGE_CO2 = 0.005   # kg
 
-    factor = EMISSION_FACTORS.get(mode, 0)
-    cost_per_km = COST_PER_KM.get(mode, 0)
+    mode = mode.strip()
 
+    if mode not in EMISSION_FACTORS:
+        raise ValueError(f"Unknown transport mode: {mode}")
+
+    factor = EMISSION_FACTORS[mode]
+    cost_per_km = COST_PER_KM[mode]
+    
     # Monthly assumptions
     trips_per_day = 2
     days_per_month = days_per_week * 4
