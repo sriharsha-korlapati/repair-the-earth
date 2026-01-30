@@ -15,6 +15,7 @@ def transport_impact_pipeline(mode: str, distance_km: float, days_per_week: int)
         "Ride-sharing Auto (Ola / Rapido)": 0.068
     }
 
+
     # -----------------------------
     # Approx cost per km (₹)
     # Indian real-world averages
@@ -41,7 +42,7 @@ def transport_impact_pipeline(mode: str, distance_km: float, days_per_week: int)
 
     factor = EMISSION_FACTORS[mode]
     cost_per_km = COST_PER_KM[mode]
-    
+
     # Monthly assumptions
     trips_per_day = 2
     days_per_month = days_per_week * 4

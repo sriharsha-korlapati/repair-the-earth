@@ -55,6 +55,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+
 # -----------------------------
 # Styles (UNCHANGED)
 # -----------------------------
