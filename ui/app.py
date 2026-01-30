@@ -158,8 +158,17 @@ if st.session_state.module == "commute":
     st.markdown("## 🚗 Daily Commute Impact")
 
     mode = st.selectbox("Mode", [
-        "Walk / Cycle", "Bike", "Bus", "Metro", "Car (Petrol)", "Car (Diesel)"
-    ])
+    "Walk / Cycle",
+    "Bike (Petrol)",
+    "EV Bike",
+    "Bus",
+    "Metro",
+    "Car (Petrol)",
+    "Car (Diesel)",
+    "EV Car",
+    "Ride-sharing Auto (Ola / Rapido)"
+])
+
     distance = st.number_input("One-way distance (km)", value=5.0)
     days = st.slider("Days per week", 1, 7, 5)
 

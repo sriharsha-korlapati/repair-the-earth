@@ -1,26 +1,34 @@
 def transport_impact_pipeline(mode: str, distance_km: float, days_per_week: int):
     # -----------------------------
     # Emission factors (kg CO2 / km)
+    # Indian averages (incl. grid mix for EVs)
     # -----------------------------
     EMISSION_FACTORS = {
         "Walk / Cycle": 0.0,
-        "Bike": 0.103,
+        "Bike (Petrol)": 0.103,
+        "EV Bike": 0.022,
         "Bus": 0.027,
         "Metro": 0.014,
         "Car (Petrol)": 0.192,
-        "Car (Diesel)": 0.171
+        "Car (Diesel)": 0.171,
+        "EV Car": 0.045,
+        "Ride-sharing Auto (Ola / Rapido)": 0.068
     }
 
     # -----------------------------
     # Approx cost per km (₹)
+    # Indian real-world averages
     # -----------------------------
     COST_PER_KM = {
         "Walk / Cycle": 0,
-        "Bike": 3,
+        "Bike (Petrol)": 3,
+        "EV Bike": 1,
         "Bus": 1.5,
         "Metro": 2,
         "Car (Petrol)": 10,
-        "Car (Diesel)": 9
+        "Car (Diesel)": 9,
+        "EV Car": 2,
+        "Ride-sharing Auto (Ola / Rapido)": 7
     }
 
     TREE_CO2_YEAR = 21.0       # kg
