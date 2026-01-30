@@ -70,6 +70,7 @@ h1, h2 { color: #e5e7eb; }
     padding: 1.1rem;
     border: 1px solid #1e293b;
     text-align: center;
+    color: #e5e7eb;
 }
 
 .impact-number {
