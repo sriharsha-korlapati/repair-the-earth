@@ -1,11 +1,19 @@
+# The chart palette in ui/theme.py was contrast- and colour-vision-validated
+# against the dark surface #0f172a specifically, so the theme is pinned to dark
+# rather than following the viewer's OS setting. A light-mode flip would put
+# every series colour on a surface it was never checked against.
 [theme]
-primaryColor = "#2E7D32"        # Green (Repair the Earth vibe)
-backgroundColor = "#F5F7F6"
-secondaryBackgroundColor = "#E8F5E9"
-textColor = "#263238"
+base = "dark"
+primaryColor = "#22c55e"
+backgroundColor = "#0b1220"
+secondaryBackgroundColor = "#0f172a"
+textColor = "#f1f5f9"
 font = "sans serif"
 
 [server]
 headless = true
 enableCORS = false
 enableXsrfProtection = false
+
+[browser]
+gatherUsageStats = false

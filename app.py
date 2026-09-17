@@ -1,290 +1,263 @@
-import sys
-import os
+"""
+Repair the Earth -- Carbon Intelligence v2
+==========================================
+
+An interactive carbon footprint dashboard for Indian students, faculty and
+campuses: measure six domains, see one honest total, and get a costed,
+ranked list of actions generated from your own numbers.
+
+WHAT CHANGED FROM v1
+--------------------
+v1 was three isolated tabs (electricity, commute, appliances). Each computed a
+number and discarded it, so there was no total footprint, no comparison, and no
+advice. v2 adds:
+
+  * three new modules -- water, waste and campus life -- where campus life is
+    usually the largest slice of a student's footprint and was entirely absent
+  * one aggregated footprint, with the electricity/appliance double-count
+    resolved explicitly instead of silently
+  * a recommendation engine that generates costed actions from the user's own
+    inputs, ranked on a marginal abatement cost curve
+  * a net-zero pathway with pledges, a glide path and campus scale-up
+  * an optional Claude-powered coach layered on top of the deterministic engine
+  * a methodology page that publishes every coefficient the model uses
+
+v1 is preserved at legacy/app_v1.py so the two can be demonstrated side by side.
+
+Run with:  streamlit run app.py
+"""
+
+from __future__ import annotations
+
 import streamlit as st
-import time
 
-st.markdown("""
-<style>
-.block-container {
-    padding-top: 1rem !important;
-}
-</style>
-""", unsafe_allow_html=True)
+from core import calculators, engine, factors as F, recommend as R, state
+from modules import (
+    about_page,
+    actions_page,
+    appliances,
+    campus,
+    coach_page,
+    commute,
+    dashboard,
+    electricity,
+    plan_page,
+    waste,
+    water,
+)
+from ui import components as C, theme as T
 
-import base64
-
-def get_base64_logo(path: str) -> str:
-    with open(path, "rb") as f:
-        return base64.b64encode(f.read()).decode()
-
-encoded_logo = get_base64_logo("assets/logo.png")
-
-
-# -----------------------------
-# Project Path Setup
-# -----------------------------
-
-from services.transport_pipeline import transport_impact_pipeline
-from services.appliance_pipeline import appliance_impact_pipeline
-
-# -----------------------------
-# Constants (transparent & explainable)
-# -----------------------------
-COST_PER_KWH = 7.0
-CO2_PER_KWH = 0.82          # kg
-TREE_CO2_YEAR = 21.0        # kg
-PHONE_CHARGE_CO2 = 0.005    # kg
-
-# -----------------------------
-# Session State
-# -----------------------------
-if "module" not in st.session_state:
-    st.session_state.module = "electricity"
-
-# -----------------------------
-# Page Config
-# -----------------------------
 st.set_page_config(
-    page_title="Repair the Earth – Carbon Intelligence",
-    layout="centered"
-)
-st.markdown(
-    "<style>section.main { padding-top: 1.5rem; }</style>",
-    unsafe_allow_html=True
+    page_title="Repair the Earth · Carbon Intelligence",
+    page_icon="🌍",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
+C.inject_css()
+state.init_state(st.session_state)
 
-# -----------------------------
-# Styles (UNCHANGED)
-# -----------------------------
-st.markdown("""
-<style>
-body { background-color: #0f172a; }
-h1, h2 { color: #e5e7eb; }
+PROFILE = st.session_state["profile"]
+INPUTS = st.session_state["inputs"]
 
-.nav {
-    display: flex;
-    gap: 0.4rem;
-    justify-content: center;
-    margin-bottom: 1.4rem;
+# Page registry. Module pages are ordered as a person would work through them:
+# see the total, drill into each source, then decide what to do.
+MODULE_PAGES = {
+    "electricity": electricity,
+    "commute": commute,
+    "appliances": appliances,
+    "water": water,
+    "waste": waste,
+    "campus": campus,
 }
 
-.nav-btn {
-    border-radius: 999px;
-    padding: 0.55rem 1.2rem;
-    font-size: 0.85rem;
-    border: 1px solid #1e293b;
-    background-color: #020617;
-    color: #94a3b8;
-}
-
-.nav-btn-active {
-    background-color: #22c55e !important;
-    color: #052e16 !important;
-    border-color: #22c55e !important;
-}
-
-.card {
-    background-color: #020617;
-    border-radius: 14px;
-    padding: 1.1rem;
-    border: 1px solid #1e293b;
-    text-align: center;
-    color: #e5e7eb;
-}
-
-.impact-number {
-    font-size: 1.9rem;
-    font-weight: 700;
-    color: #22c55e;
-}
-
-.impact-label {
-    color: #9ca3af;
-    font-size: 0.85rem;
-}
-
-.explain {
-    background-color: #020617;
-    border-left: 5px solid #22c55e;
-    border-radius: 12px;
-    padding: 1.1rem;
-    margin-top: 1.2rem;
-    color: #e5e7eb;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# -----------------------------
-# Header
-# -----------------------------
-st.markdown("""
-<div style="
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:10px;
-    margin-top:0;
-">
-    <img src="data:image/png;base64,{}"
-         style="height:36px; width:36px;" />
-    <h1 style="
-        margin:0;
-        padding:0;
-        line-height:1;
-    ">
-        Repair the Earth
-    </h1>
-</div>
-
-<p style="
-    text-align:center;
-    color:#9ca3af;
-    margin:6px 0 14px 0;
-">
-Carbon intelligence for everyday actions
-</p>
-""".format(encoded_logo), unsafe_allow_html=True)
-
-
-# -----------------------------
-# SINGLE CLICKABLE PILL NAV (UNCHANGED)
-# -----------------------------
-cols = st.columns(3)
-modules = [
-    ("⚡ Electricity", "electricity"),
-    ("🚗 Commute", "commute"),
-    ("🏠 Appliances", "appliances")
+NAV = [
+    ("dashboard", "📊 Dashboard"),
+    ("electricity", "⚡ Electricity"),
+    ("commute", "🚌 Commute"),
+    ("appliances", "🏠 Appliances"),
+    ("water", "💧 Water"),
+    ("waste", "♻️ Waste"),
+    ("campus", "🎓 Campus life"),
+    ("actions", "🎯 What to do"),
+    ("plan", "📉 Net-zero plan"),
+    ("coach", "🤖 Ask the coach"),
+    ("about", "📖 Method & export"),
 ]
 
-for col, (label, key) in zip(cols, modules):
-    with col:
-        is_active = st.session_state.module == key
-        btn_style = """
-            background-color: #22c55e;
-            color: #052e16;
-            border: 1px solid #22c55e;
-        """ if is_active else ""
 
-        st.markdown(f"""
-        <style>
-        div[data-testid="stButton"][data-key="nav-{key}"] button {{
-            {btn_style}
-            border-radius: 999px;
-            padding: 0.55rem 1.2rem;
-            font-size: 0.85rem;
-        }}
-        </style>
-        """, unsafe_allow_html=True)
+# ---------------------------------------------------------------------------
+# Sidebar: the profile that every module computes against
+# ---------------------------------------------------------------------------
 
-        if st.button(label, key=f"nav-{key}", use_container_width=True):
-            st.session_state.module = key
+def sidebar() -> str:
+    with st.sidebar:
+        st.markdown("### 🌍 Repair the Earth")
+        st.caption("Carbon Intelligence v2")
 
-# =====================================================================
-# ⚡ ELECTRICITY
-# =====================================================================
-if st.session_state.module == "electricity":
+        labels = [label for _, label in NAV]
+        keys = [key for key, _ in NAV]
+        current = st.session_state.get("page", "dashboard")
+        index = keys.index(current) if current in keys else 0
+        choice = st.radio("Go to", labels, index=index, label_visibility="collapsed")
+        page = keys[labels.index(choice)]
 
-    st.markdown("## ⚡ Electricity Impact")
+        st.divider()
+        st.markdown("##### Your profile")
+        PROFILE["name"] = st.text_input("Name (optional)", PROFILE.get("name", ""))
+        PROFILE["persona"] = st.selectbox(
+            "You are a", state.PERSONAS,
+            index=state.PERSONAS.index(PROFILE.get("persona", state.PERSONAS[0]))
+            if PROFILE.get("persona") in state.PERSONAS else 0,
+        )
+        PROFILE["campus"] = st.text_input("Campus / institution",
+                                          PROFILE.get("campus", ""))
+        locations = list(F.RAINFALL_MM.keys())
+        PROFILE["location"] = st.selectbox(
+            "Location", locations,
+            index=locations.index(PROFILE.get("location", locations[0]))
+            if PROFILE.get("location") in locations else 0,
+            help="Used for local rainfall in the rainwater-harvesting estimate.",
+        )
+        PROFILE["household_size"] = st.number_input(
+            "People sharing your bills", min_value=1, max_value=20,
+            value=int(PROFILE.get("household_size", 4)),
+            help="Shared electricity and water are divided by this wherever you "
+                 "tick 'this meter is shared'.",
+        )
 
-    bill = st.number_input("Monthly electricity bill (₹)", min_value=0, value=356)
+        st.divider()
+        st.markdown("##### Grid & tariff")
+        presets = list(F.GRID_PRESETS.keys())
+        PROFILE["grid_preset"] = st.selectbox(
+            "Your grid", presets + ["Custom"],
+            index=(presets + ["Custom"]).index(PROFILE.get("grid_preset", presets[0]))
+            if PROFILE.get("grid_preset") in presets + ["Custom"] else 0,
+        )
+        if PROFILE["grid_preset"] == "Custom":
+            PROFILE["grid_ef"] = st.number_input(
+                "Grid factor (kg CO₂/kWh)", min_value=0.1, max_value=1.5,
+                value=float(PROFILE.get("grid_ef", F.DEFAULT_GRID_EF)), step=0.01,
+            )
+        else:
+            PROFILE["grid_ef"] = F.GRID_PRESETS[PROFILE["grid_preset"]]
+        PROFILE["include_td_losses"] = st.checkbox(
+            f"Add {F.TD_LOSS_FRACTION:.0%} transmission losses",
+            value=bool(PROFILE.get("include_td_losses", True)),
+            help="About a tenth of generated electricity never reaches your meter, "
+                 "so a consumed kWh carries more carbon than a generated one.",
+        )
+        st.caption(
+            f"At your meter: **{calculators.grid_ef(PROFILE):.3f} kg CO₂/kWh**"
+        )
 
-    units = bill / COST_PER_KWH
-    monthly_co2 = units * CO2_PER_KWH
-    yearly_co2 = monthly_co2 * 12
+        tariffs = list(F.TARIFF_PRESETS.keys())
+        PROFILE["tariff_preset"] = st.selectbox(
+            "Tariff band", tariffs + ["Custom"],
+            index=(tariffs + ["Custom"]).index(PROFILE.get("tariff_preset", tariffs[1]))
+            if PROFILE.get("tariff_preset") in tariffs + ["Custom"] else 1,
+        )
+        if PROFILE["tariff_preset"] == "Custom":
+            PROFILE["tariff"] = st.number_input(
+                "₹ per kWh", min_value=0.5, max_value=30.0,
+                value=float(PROFILE.get("tariff", F.DEFAULT_TARIFF)), step=0.25,
+            )
+        else:
+            PROFILE["tariff"] = F.TARIFF_PRESETS[PROFILE["tariff_preset"]]
 
-    c1, c2, c3 = st.columns(3)
-    c1.markdown(f"<div class='card'><div class='impact-number'>{units:.1f}</div><div class='impact-label'>kWh / month</div></div>", unsafe_allow_html=True)
-    c2.markdown(f"<div class='card'><div class='impact-number'>{monthly_co2:.1f}</div><div class='impact-label'>kg CO₂ / month</div></div>", unsafe_allow_html=True)
-    c3.markdown(f"<div class='card'><div class='impact-number'>{yearly_co2:.0f}</div><div class='impact-label'>kg CO₂ / year</div></div>", unsafe_allow_html=True)
+        st.divider()
+        st.markdown("##### Electricity accounting")
+        st.caption(
+            "Your bill and your appliance list measure the same kWh. One is the "
+            "authoritative total; the other becomes a cross-check."
+        )
+        source_labels = {
+            "bill": "My bill (appliances = diagnostic)",
+            "appliances": "My appliance model (bill = cross-check)",
+        }
+        chosen = st.radio(
+            "Authoritative source",
+            list(source_labels.keys()),
+            format_func=lambda key: source_labels[key],
+            index=0 if PROFILE.get("electricity_source", "bill") == "bill" else 1,
+            label_visibility="collapsed",
+        )
+        PROFILE["electricity_source"] = chosen
 
-    st.markdown("### 🔎 What this equals to")
-    r1, r2, r3 = st.columns(3)
-    r1.markdown(f"<div class='card'>🌳 {yearly_co2 / TREE_CO2_YEAR:.1f} trees / year</div>", unsafe_allow_html=True)
-    r2.markdown(f"<div class='card'>📱 {monthly_co2 / PHONE_CHARGE_CO2:.0f} phone charges</div>", unsafe_allow_html=True)
-    r3.markdown(f"<div class='card'>💰 ₹{bill:.0f} / month</div>", unsafe_allow_html=True)
+        st.divider()
+        if st.button("↺ Reset to demo defaults", width="stretch"):
+            state.reset_state(st.session_state)
+            st.rerun()
+        st.caption(
+            "Built on the Repair the Earth carbon calculator. "
+            "Emission factors are India-relevant public estimates - see "
+            "**Method & export** for every one of them."
+        )
+    return page
 
-    st.markdown("""
-    <div class="explain">
-    💡 One tube-light left ON daily ≈ 18–20 kg CO₂ / year<br/>
-    🌱 Reduce peak usage & switch off standby loads
-    </div>
-    """, unsafe_allow_html=True)
 
-# =====================================================================
-# 🚗 COMMUTE
-# =====================================================================
-if st.session_state.module == "commute":
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
-    st.markdown("## 🚗 Daily Commute Impact")
+page = sidebar()
+st.session_state["page"] = page
 
-    mode = st.selectbox("Mode", [
-    "Walk / Cycle",
-    "Bike (Petrol)",
-    "EV Bike",
-    "Bus",
-    "Metro",
-    "Car (Petrol)",
-    "Car (Diesel)",
-    "EV Car",
-    "Ride-sharing Auto (Ola / Rapido)"
-])
+# Everything on every page derives from one computation, so no two pages can
+# ever disagree about the same number.
+footprint = engine.build(INPUTS, PROFILE)
+actions = R.generate(INPUTS, PROFILE, footprint.results,
+                     skip_modules=set(footprint.diagnostic))
 
-    distance = st.number_input("One-way distance (km)", value=5.0)
-    days = st.slider("Days per week", 1, 7, 5)
+subtitle = "Carbon intelligence for everyday actions"
+if PROFILE.get("campus"):
+    subtitle = f"{subtitle} · {PROFILE['campus']}"
+C.header("Repair the Earth", subtitle, badge="v2")
+st.write("")
 
-    result = transport_impact_pipeline(mode, distance, days)
-    monthly_co2 = result["co2"]["monthly_kg"]
-    yearly_co2 = result["co2"]["yearly_kg"]
-    monthly_cost = result["cost_inr"]["monthly"]
+if page == "dashboard":
+    dashboard.render(footprint, PROFILE, actions,
+                     set(st.session_state.get("visited", set())))
 
-    c1, c2 = st.columns(2)
-    c1.markdown(f"<div class='card'><div class='impact-number'>{monthly_co2:.1f}</div><div class='impact-label'>kg CO₂ / month</div></div>", unsafe_allow_html=True)
-    c2.markdown(f"<div class='card'><div class='impact-number'>{yearly_co2:.0f}</div><div class='impact-label'>kg CO₂ / year</div></div>", unsafe_allow_html=True)
+elif page in MODULE_PAGES:
+    state.mark_visited(st.session_state, page)
+    MODULE_PAGES[page].render(INPUTS[page], PROFILE)
 
-    st.markdown("### 🔎 What this equals to")
-    r1, r2, r3 = st.columns(3)
-    r1.markdown(f"<div class='card'>🌳 {yearly_co2 / TREE_CO2_YEAR:.1f} trees / year</div>", unsafe_allow_html=True)
-    r2.markdown(f"<div class='card'>📱 {monthly_co2 / PHONE_CHARGE_CO2:.0f} phone charges</div>", unsafe_allow_html=True)
-    r3.markdown(f"<div class='card'>💰 ₹{monthly_cost:.0f} / month</div>", unsafe_allow_html=True)
+    # Inputs may have changed this run, so recompute before showing the footer
+    # numbers -- otherwise the summary lags one interaction behind.
+    refreshed = engine.build(INPUTS, PROFILE)
+    st.divider()
+    meta = F.MODULE_META[page]
+    is_counted = page in refreshed.counted
+    share = refreshed.share_of(page) if is_counted else 0.0
+    cols = st.columns([2, 1])
+    with cols[0]:
+        if is_counted:
+            C.insight(
+                f"{meta['icon']} <b>{meta['label']}</b> is "
+                f"<b>{refreshed.counted[page]:,.0f} kg CO₂e a year</b>, "
+                f"{share:.0%} of your total footprint of "
+                f"{refreshed.annual_kg:,.0f} kg."
+            )
+        else:
+            C.insight(
+                f"{meta['icon']} <b>{meta['label']}</b> is measured as a "
+                "cross-check and is not added to your total - see the sidebar.",
+                "info",
+            )
+    with cols[1]:
+        if st.button("📊 Back to the dashboard", width="stretch"):
+            st.session_state["page"] = "dashboard"
+            st.rerun()
 
-    st.markdown("""
-    <div class="explain">
-    💡 Switching 1 day/week to WFH cuts ~20% commute emissions<br/>
-    🌱 Club trips & prefer public transport
-    </div>
-    """, unsafe_allow_html=True)
+elif page == "actions":
+    actions_page.render(footprint, PROFILE, actions, INPUTS["plan"])
 
-# =====================================================================
-# 🏠 APPLIANCES
-# =====================================================================
-if st.session_state.module == "appliances":
+elif page == "plan":
+    plan_page.render(footprint, PROFILE, actions, INPUTS["plan"])
 
-    st.markdown("## 🏠 Home Appliance Habits")
+elif page == "coach":
+    coach_page.render(footprint, PROFILE, actions, st.session_state)
 
-    ac_hours = st.slider("AC hours/day", 0, 12, 6)
-    ac_temp = st.slider("AC temperature (°C)", 18, 30, 26)
-    wash_cycles = st.slider("Washing cycles/week", 0, 10, 3)
-    load = st.selectbox("Wash load", ["Full Load", "Half Load"])
-
-    result = appliance_impact_pipeline(ac_hours, ac_temp, wash_cycles, load)
-    monthly_co2 = result["impact"]["monthly_co2_kg"]
-    yearly_co2 = result["impact"]["annual_co2_kg"]
-    monthly_cost = result["cost_inr"]["monthly"]
-
-    c1, c2 = st.columns(2)
-    c1.markdown(f"<div class='card'><div class='impact-number'>{monthly_co2:.1f}</div><div class='impact-label'>kg CO₂ / month</div></div>", unsafe_allow_html=True)
-    c2.markdown(f"<div class='card'><div class='impact-number'>{yearly_co2:.0f}</div><div class='impact-label'>kg CO₂ / year</div></div>", unsafe_allow_html=True)
-
-    st.markdown("### 🔎 What this equals to")
-    r1, r2, r3 = st.columns(3)
-    r1.markdown(f"<div class='card'>🌳 {yearly_co2 / TREE_CO2_YEAR:.1f} trees / year</div>", unsafe_allow_html=True)
-    r2.markdown(f"<div class='card'>📱 {monthly_co2 / PHONE_CHARGE_CO2:.0f} phone charges</div>", unsafe_allow_html=True)
-    r3.markdown(f"<div class='card'>💰 ₹{monthly_cost:.0f} / month</div>", unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="explain">
-    💡 1°C higher AC setting saves ~6% energy<br/>
-    🌱 Always wash full loads & air-dry when possible
-    </div>
-    """, unsafe_allow_html=True)
+elif page == "about":
+    about_page.render(footprint, PROFILE, actions, INPUTS["plan"])
