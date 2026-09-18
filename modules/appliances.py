@@ -9,21 +9,13 @@ from ui import charts, components as C, theme as T
 
 
 def render(inputs: dict, profile: dict) -> None:
-    C.section(
-        "🏠 Appliances",
-        "v1 charged the AC a flat 0.5 kg an hour regardless of its size or star "
-        "rating. This version models rated watts × hours × count for every device, "
-        "which is what makes the advice specific: it can tell you a BLDC fan beats "
-        "a new AC for your usage pattern, and show the arithmetic.",
-    )
+    C.section("🏠 Appliances", "Rated watts × hours × count, device by device.")
 
     is_diagnostic = profile.get("electricity_source") == "bill"
     if is_diagnostic:
         C.insight(
-            "This module is currently a <b>diagnostic</b>. Your billed electricity is "
-            "the authoritative number in the total, and this breakdown explains where "
-            "those units go without being added on top of them. Switch the "
-            "authoritative source in the sidebar to count this model instead.", "info",
+            "A <b>cross-check</b>, not counted in your total - your bill is. "
+            "Switch the source in the sidebar to count this instead.", "info",
         )
 
     tab_cool, tab_laundry, tab_devices = st.tabs(
@@ -51,8 +43,8 @@ def render(inputs: dict, profile: dict) -> None:
             )
             inputs["ac_months"] = cols[1].slider(
                 "Months a year you run it", 0, 12, int(inputs.get("ac_months", 6)),
-                help="Most of India runs an AC for five to eight months, not twelve. "
-                     "Annualising a summer habit over a whole year overstates it badly.",
+                help="Five to eight months is typical. Annualising a summer habit "
+                     "over twelve months overstates it badly.",
             )
             inputs["ac_temp"] = st.slider(
                 "Thermostat setting (°C)", 18, 30, int(inputs.get("ac_temp", 24)),
@@ -76,8 +68,7 @@ def render(inputs: dict, profile: dict) -> None:
             "Wash setting", modes,
             index=modes.index(inputs.get("wash_mode", modes[0]))
             if inputs.get("wash_mode") in modes else 0,
-            help="Heating the water is nearly all of a wash cycle's energy. Cold "
-                 "washing is the single biggest laundry saving available.",
+            help="Heating water is nearly all of a wash cycle's energy.",
         )
         cols = st.columns(2)
         inputs["wash_cycles_week"] = cols[0].slider(
@@ -87,35 +78,48 @@ def render(inputs: dict, profile: dict) -> None:
         inputs["dryer_cycles_week"] = cols[1].slider(
             "Tumble dryer cycles a week", 0.0, 14.0,
             float(inputs.get("dryer_cycles_week", 0.0)), step=0.5,
-            help="A dryer uses roughly five times a cold wash. India has sunshine; "
-                 "this should usually be zero.",
+            help="Roughly five times a cold wash. Usually zero in India.",
         )
 
     with tab_devices:
-        st.caption(
-            "Set how many you own and how long each runs. Rated watts are shown so "
-            "you can see which devices are actually worth arguing about."
-        )
         devices = inputs.setdefault("devices", {})
         hours_map = inputs.setdefault("device_hours", {})
-        for name, spec in F.APPLIANCES.items():
-            cols = st.columns([2.2, 0.9, 1.1, 1.3])
-            cols[0].markdown(
-                f"<div style='padding-top:6px;color:{T.TEXT_2};font-size:0.88rem;'>"
-                f"{name}</div>", unsafe_allow_html=True,
+
+        # Eighteen appliances in a four-column row was the single worst layout in
+        # the app: on a phone each cell got ~90px and the labels collided. Now you
+        # pick the devices you actually own, and only those get inputs — which
+        # also turns an 18-row wall into a short list for most people.
+        all_devices = list(F.APPLIANCES.keys())
+        owned_now = [n for n in all_devices if float(devices.get(n, 0)) > 0]
+        chosen = st.multiselect(
+            "Devices you have", all_devices, default=owned_now,
+            help="Add or remove appliances. Anything unticked counts as zero.",
+        )
+        for name in all_devices:
+            if name not in chosen:
+                devices[name] = 0
+
+        if not chosen:
+            st.caption("Pick the appliances you own to model them.")
+        for name in chosen:
+            spec = F.APPLIANCES[name]
+            st.markdown(
+                f"<div style='color:{T.TEXT_2};font-size:0.88rem;font-weight:600;"
+                f"margin-top:6px;'>{name} "
+                f"<span style='color:{T.TEXT_MUTED};font-weight:400;'>"
+                f"· {spec['watts']} W</span></div>",
+                unsafe_allow_html=True,
             )
-            cols[1].markdown(
-                f"<div style='padding-top:6px;color:{T.TEXT_MUTED};font-size:0.8rem;'>"
-                f"{spec['watts']} W</div>", unsafe_allow_html=True,
+            left, right = st.columns(2)
+            devices[name] = left.number_input(
+                "How many", min_value=0, max_value=30,
+                value=max(1, int(devices.get(name, 0))),
+                key=f"dev_n_{name}", help=spec["note"],
             )
-            devices[name] = cols[2].number_input(
-                "count", min_value=0, max_value=30, value=int(devices.get(name, 0)),
-                key=f"dev_n_{name}", label_visibility="collapsed",
-            )
-            hours_map[name] = cols[3].number_input(
-                "hours/day", min_value=0.0, max_value=24.0, step=0.5,
+            hours_map[name] = right.number_input(
+                "Hours a day", min_value=0.0, max_value=24.0, step=0.5,
                 value=float(hours_map.get(name, spec["hours"])),
-                key=f"dev_h_{name}", label_visibility="collapsed",
+                key=f"dev_h_{name}",
             )
 
     # Every widget above has already written into `inputs` during this run, so
@@ -143,11 +147,11 @@ def render(inputs: dict, profile: dict) -> None:
     for note in result.notes:
         C.insight(note)
 
-    C.assumptions([
-        "Consumption = rated watts ÷ 1000 × hours a day × count × 365.",
-        f"AC load factor = 1 + {F.AC_PERCENT_PER_DEGREE:.0%} × "
-        f"({F.AC_REFERENCE_TEMP_C:.0f} °C − your setting), floored at "
-        f"{F.AC_MIN_LOAD_FACTOR:.0%} so a very high setting never reads as free.",
-        "Refrigerator watts are the average over the compressor cycle, not its "
-        "peak draw - a fridge does not run flat out for 24 hours.",
-    ])
+    with st.expander("Assumptions"):
+        C.assumptions([
+            "kWh = watts ÷ 1000 × hours × count × 365.",
+            f"AC load = 1 + {F.AC_PERCENT_PER_DEGREE:.0%} × "
+            f"({F.AC_REFERENCE_TEMP_C:.0f} °C − your setting), floored at "
+            f"{F.AC_MIN_LOAD_FACTOR:.0%}.",
+            "Fridge watts are the compressor-cycle average, not peak draw.",
+        ])

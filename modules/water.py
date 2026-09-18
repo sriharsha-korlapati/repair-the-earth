@@ -16,12 +16,7 @@ from ui import charts, components as C, theme as T
 
 
 def render(inputs: dict, profile: dict) -> None:
-    C.section(
-        "💧 Water",
-        "The water-energy-carbon nexus. Every litre is pumped, often heated, and "
-        "then treated again on the way out - and each of those steps runs on the "
-        "same grid as everything else on this dashboard.",
-    )
+    C.section("💧 Water", "Pumped, heated, treated - each step burns power.")
 
     left, right = st.columns([1, 1], gap="large")
 
@@ -35,9 +30,8 @@ def render(inputs: dict, profile: dict) -> None:
                  "supply, because it is trucked instead of pumped.",
         )
         st.caption(
-            f"{F.WATER_SOURCE_KWH_PER_KL[inputs['source']]:.2f} kWh of electricity "
-            f"per kilolitre delivered, plus {F.WASTEWATER_KWH_PER_KL:.2f} kWh per "
-            "kilolitre to treat it as sewage afterwards."
+            f"{F.WATER_SOURCE_KWH_PER_KL[inputs['source']]:.2f} kWh/kL to deliver, "
+            f"+{F.WASTEWATER_KWH_PER_KL:.2f} kWh/kL to treat as sewage."
         )
 
         heaters = list(F.WATER_HEATER_TYPES.keys())
@@ -56,9 +50,8 @@ def render(inputs: dict, profile: dict) -> None:
             inputs["ro_litres_day"] = st.slider(
                 "Purified water used (litres/day)", 0.0, 30.0,
                 float(inputs.get("ro_litres_day", 4.0)), step=0.5,
-                help=f"RO rejects about {F.RO_REJECT_RATIO:g} litres for every litre "
-                     "it purifies. That reject water never appears on any bill and "
-                     "is almost always thrown away.",
+                help=f"RO rejects ~{F.RO_REJECT_RATIO:g} L per litre purified, and "
+                     "it never shows on a bill.",
             )
         inputs["bottled_litres_week"] = st.slider(
             "Bottled water bought (litres/week)", 0.0, 30.0,
@@ -70,36 +63,27 @@ def render(inputs: dict, profile: dict) -> None:
             help="A single dripping tap is about 15 litres a day.",
         )
 
-    st.markdown("###### Daily water use, by what you use it for")
-    st.caption(
-        "Enter how many times a day, or how many minutes a day, for each one. "
-        "The hot-water share of each use is what drives the carbon."
-    )
+    st.markdown("###### Daily use")
+    st.caption("Times (or minutes) per day. The hot share drives the carbon.")
     quantities = inputs.setdefault("quantities", {})
-    for name, spec in F.WATER_END_USES.items():
-        cols = st.columns([2.3, 1.2, 1.6])
-        cols[0].markdown(
-            f"<div style='padding-top:6px;color:{T.TEXT_2};font-size:0.88rem;'>{name}"
-            f"</div>", unsafe_allow_html=True,
-        )
-        quantities[name] = cols[1].number_input(
-            f"per day ({spec['unit']})", min_value=0.0, max_value=60.0, step=0.5,
-            value=float(quantities.get(name, spec["default_qty"])),
-            key=f"water_q_{name}", label_visibility="collapsed",
-        )
-        hot = f" · {spec['hot_share']:.0%} hot" if spec["hot_share"] else ""
-        cols[2].markdown(
-            f"<div style='padding-top:6px;color:{T.TEXT_MUTED};font-size:0.78rem;'>"
-            f"{spec['litres']:g} L per {spec['unit']}{hot}</div>",
-            unsafe_allow_html=True,
-        )
+    uses = list(F.WATER_END_USES.items())
+    for index in range(0, len(uses), 2):
+        for col, (name, spec) in zip(st.columns(2), uses[index:index + 2]):
+            with col:
+                hot = f", {spec['hot_share']:.0%} of it hot" if spec["hot_share"] else ""
+                quantities[name] = st.number_input(
+                    f"{name} ({spec['unit']}s/day)",
+                    min_value=0.0, max_value=60.0, step=0.5,
+                    value=float(quantities.get(name, spec["default_qty"])),
+                    key=f"water_q_{name}",
+                    help=f"{spec['litres']:g} L per {spec['unit']}{hot}. {spec['note']}",
+                )
 
     with st.expander("Rainwater harvesting potential"):
         inputs["roof_area_m2"] = st.slider(
             "Roof area available (m²)", 0.0, 2000.0,
             float(inputs.get("roof_area_m2", 0.0)), step=10.0,
-            help="A hostel block roof is often 400-1,500 m². This is the single "
-                 "highest-impact water intervention a campus can make.",
+            help="A hostel block roof is often 400-1,500 m².",
         )
         rainfall = F.RAINFALL_MM.get(profile.get("location", ""), 900.0)
         # Computed inline from the slider just read, not from the result object,
@@ -167,10 +151,11 @@ def render(inputs: dict, profile: dict) -> None:
         if note:
             C.insight(note)
 
-    C.assumptions([
-        f"Heating a litre by 25 °C takes {F.HOT_WATER_KWH_PER_LITRE:.4f} kWh at 90% "
-        "heater efficiency (4.18 kJ/kg/K ÷ 3600).",
-        f"Wastewater treatment adds {F.WASTEWATER_KWH_PER_KL:.2f} kWh per kilolitre.",
-        "If you also listed a geyser under Appliances, set the heater above to "
-        "'already counted in Appliances' so the same hot water is not charged twice.",
-    ])
+    with st.expander("Assumptions"):
+        C.assumptions([
+            f"Heating a litre by 25 °C takes {F.HOT_WATER_KWH_PER_LITRE:.4f} kWh "
+            "at 90% efficiency.",
+            f"Sewage treatment adds {F.WASTEWATER_KWH_PER_KL:.2f} kWh/kL.",
+            "Listed a geyser under Appliances too? Set the heater to 'already "
+            "counted in Appliances' so it is not charged twice.",
+        ])

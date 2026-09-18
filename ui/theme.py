@@ -82,58 +82,98 @@ CSS = f"""
   --text-2: {TEXT_2};
   --text-muted: {TEXT_MUTED};
   --accent: {ACCENT};
+  --gutter: 16px;
 }}
 
 .stApp {{ background: var(--page); }}
-.block-container {{ padding-top: 3.2rem !important; padding-bottom: 3rem !important; max-width: 1180px; }}
 
-h1, h2, h3, h4 {{ color: var(--text-1); letter-spacing: -0.01em; }}
-p, li, label, .stMarkdown {{ color: var(--text-2); }}
-
-/* ---------- Header ---------- */
-.rte-head {{ display: flex; align-items: center; gap: 12px; margin-bottom: 2px; }}
-.rte-head img {{ height: 38px; width: 38px; }}
-.rte-title {{ font-size: 1.55rem; font-weight: 700; color: var(--text-1); line-height: 1.1; margin: 0; }}
-.rte-sub {{ color: var(--text-muted); font-size: 0.87rem; margin: 2px 0 0 0; }}
-.rte-badge {{
-  display: inline-block; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em;
-  text-transform: uppercase; padding: 3px 9px; border-radius: 999px;
-  background: rgba(34,197,94,0.14); color: var(--accent);
-  border: 1px solid rgba(34,197,94,0.35);
+/* Mobile-first container. The 16px gutter is the phone minimum; the page
+   widens on larger screens rather than the other way round. */
+.block-container {{
+  /* Streamlit pins a toolbar over the top of the page; 1.1rem of padding let
+     the header scroll underneath it and clipped the logo. */
+  padding: 3rem var(--gutter) 3rem var(--gutter) !important;
+  max-width: 1180px;
+}}
+@media (min-width: 768px) {{
+  .block-container {{ padding: 3.2rem 2rem 3rem 2rem !important; }}
 }}
 
-/* ---------- Cards & tiles ---------- */
-.rte-card {{
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 14px; padding: 1rem 1.1rem;
+/* Fluid type. Nothing is allowed below 13px: the previous build shipped 11px
+   captions, which are unreadable on a phone held at arm's length. */
+h1 {{ font-size: clamp(1.5rem, 5vw, 2.1rem); }}
+h2 {{ font-size: clamp(1.3rem, 4.2vw, 1.7rem); }}
+h3 {{ font-size: clamp(1.1rem, 3.6vw, 1.35rem); }}
+h4 {{ font-size: clamp(1rem, 3.2vw, 1.15rem); }}
+h1, h2, h3, h4 {{ color: var(--text-1); letter-spacing: -0.01em; line-height: 1.25; }}
+p, li, label, .stMarkdown {{ color: var(--text-2); }}
+.stCaption, [data-testid="stCaptionContainer"] p {{ font-size: 0.83rem !important; }}
+
+/* ---------- Header ---------- */
+.rte-head {{ display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }}
+.rte-head img {{ height: 32px; width: 32px; flex-shrink: 0; }}
+.rte-title {{
+  font-size: clamp(1.15rem, 4.5vw, 1.45rem); font-weight: 700;
+  color: var(--text-1); line-height: 1.15; margin: 0;
+}}
+.rte-sub {{ color: var(--text-muted); font-size: 0.8rem; margin: 1px 0 0 0; line-height: 1.35; }}
+.rte-badge {{
+  display: inline-block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; padding: 2px 7px; border-radius: 999px;
+  background: rgba(34,197,94,0.14); color: var(--accent);
+  border: 1px solid rgba(34,197,94,0.35); white-space: nowrap;
+}}
+
+/* ---------- Stat tiles: a wrapping grid, not fixed columns ----------
+   st.columns keeps N columns side by side on a phone, which is what squeezed
+   four tiles into 90px each. This grid reflows to two-up, then one-up. */
+.tile-grid {{
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}}
+@media (min-width: 720px) {{
+  .tile-grid {{ grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); gap: 12px; }}
 }}
 .tile {{
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: 14px; padding: 0.85rem 0.95rem; height: 100%;
+  border-radius: 14px; padding: 0.8rem 0.9rem; min-width: 0;
 }}
-.tile-label {{ color: var(--text-muted); font-size: 0.76rem; line-height: 1.3; }}
+.tile-label {{
+  color: var(--text-muted); font-size: 0.83rem; line-height: 1.3;
+  overflow-wrap: anywhere;
+}}
 .tile-value {{
-  color: var(--text-1); font-size: 1.6rem; font-weight: 650;
-  line-height: 1.15; margin-top: 3px;
+  color: var(--text-1); font-size: clamp(1.25rem, 5.5vw, 1.55rem); font-weight: 650;
+  line-height: 1.15; margin-top: 3px; overflow-wrap: anywhere;
 }}
-.tile-unit {{ color: var(--text-muted); font-size: 0.78rem; font-weight: 500; margin-left: 3px; }}
-.tile-foot {{ color: var(--text-muted); font-size: 0.72rem; margin-top: 4px; }}
-.tile-delta-good {{ color: {GOOD}; font-size: 0.75rem; font-weight: 600; }}
-.tile-delta-bad {{ color: {SERIOUS}; font-size: 0.75rem; font-weight: 600; }}
+.tile-unit {{ color: var(--text-muted); font-size: 0.82rem; font-weight: 500; margin-left: 3px; }}
+.tile-foot {{ color: var(--text-muted); font-size: 0.82rem; margin-top: 4px; line-height: 1.35; }}
+.tile-delta-good {{ color: {GOOD}; font-size: 0.8rem; font-weight: 600; }}
+.tile-delta-bad {{ color: {SERIOUS}; font-size: 0.8rem; font-weight: 600; }}
 
-/* ---------- Hero figure: exactly one per view ---------- */
+/* ---------- Hero ---------- */
 .hero {{
   background: linear-gradient(180deg, {SURFACE_RAISED} 0%, {SURFACE} 100%);
-  border: 1px solid var(--border); border-radius: 18px; padding: 1.3rem 1.5rem;
+  border: 1px solid var(--border); border-radius: 16px; padding: 1.1rem 1.15rem;
 }}
-.hero-label {{ color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.07em; }}
-.hero-value {{ font-size: 3.2rem; font-weight: 700; color: var(--accent); line-height: 1; margin: 6px 0 2px 0; }}
-.hero-unit {{ font-size: 1rem; color: var(--text-2); font-weight: 500; }}
-.hero-note {{ color: var(--text-muted); font-size: 0.82rem; margin-top: 8px; }}
+.hero-row {{
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 14px; flex-wrap: wrap;
+}}
+.hero-label {{
+  color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase;
+  letter-spacing: 0.07em;
+}}
+.hero-value {{
+  font-size: clamp(2.4rem, 13vw, 3.2rem); font-weight: 700; color: var(--accent);
+  line-height: 1; margin: 6px 0 2px 0;
+}}
+.hero-unit {{ font-size: clamp(0.85rem, 3.4vw, 1rem); color: var(--text-2); font-weight: 500; }}
+.hero-note {{ color: var(--text-muted); font-size: 0.83rem; margin-top: 8px; line-height: 1.45; }}
 .grade-chip {{
   display: inline-flex; align-items: center; justify-content: center;
-  min-width: 62px; height: 62px; border-radius: 16px;
-  font-size: 1.7rem; font-weight: 750;
+  min-width: 54px; height: 54px; border-radius: 14px;
+  font-size: 1.5rem; font-weight: 750; flex-shrink: 0;
 }}
 
 /* ---------- Meters ---------- */
@@ -142,10 +182,10 @@ p, li, label, .stMarkdown {{ color: var(--text-2); }}
 }}
 .meter-fill {{ height: 100%; border-radius: 999px; }}
 
-/* ---------- Insight & note blocks ---------- */
+/* ---------- Insights ---------- */
 .insight {{
   background: var(--surface); border-left: 3px solid var(--accent);
-  border-radius: 10px; padding: 0.7rem 0.9rem; margin-bottom: 0.5rem;
+  border-radius: 10px; padding: 0.7rem 0.85rem; margin-bottom: 0.5rem;
   color: var(--text-2); font-size: 0.88rem; line-height: 1.5;
 }}
 .insight-warn {{ border-left-color: {WARNING}; }}
@@ -154,20 +194,23 @@ p, li, label, .stMarkdown {{ color: var(--text-2); }}
 .insight b {{ color: var(--text-1); }}
 
 .assump {{
-  color: var(--text-muted); font-size: 0.78rem; line-height: 1.5;
+  color: var(--text-muted); font-size: 0.8rem; line-height: 1.5;
   border-top: 1px solid var(--border); padding-top: 0.6rem; margin-top: 0.8rem;
 }}
 
-/* ---------- Action / recommendation rows ---------- */
+/* ---------- Action cards ---------- */
 .action {{
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: 12px; padding: 0.8rem 0.95rem; margin-bottom: 0.55rem;
+  border-radius: 12px; padding: 0.8rem 0.9rem; margin-bottom: 0.5rem;
 }}
-.action-title {{ color: var(--text-1); font-weight: 620; font-size: 0.95rem; }}
-.action-body {{ color: var(--text-2); font-size: 0.84rem; line-height: 1.5; margin-top: 3px; }}
+.action-title {{
+  color: var(--text-1); font-weight: 620; font-size: 0.97rem; line-height: 1.35;
+}}
+.action-body {{ color: var(--text-2); font-size: 0.86rem; line-height: 1.5; margin-top: 4px; }}
+.chip-row {{ display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }}
 .chip {{
-  display: inline-block; font-size: 0.7rem; padding: 2px 8px; border-radius: 999px;
-  border: 1px solid var(--border); color: var(--text-muted); margin-right: 5px;
+  display: inline-block; font-size: 0.81rem; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--border); color: var(--text-muted); white-space: nowrap;
 }}
 .chip-save {{ color: {GOOD}; border-color: rgba(12,163,12,0.4); }}
 .chip-cost {{ color: {SERIOUS}; border-color: rgba(236,131,90,0.4); }}
@@ -175,23 +218,56 @@ p, li, label, .stMarkdown {{ color: var(--text-2); }}
 .chip-medium {{ color: {WARNING}; border-color: rgba(250,178,25,0.4); }}
 .chip-hard {{ color: {SERIOUS}; border-color: rgba(236,131,90,0.4); }}
 
+/* ---------- Equivalence chips ---------- */
+.eq-grid {{
+  display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr));
+}}
+@media (min-width: 720px) {{ .eq-grid {{ grid-template-columns: repeat(6, minmax(0, 1fr)); }} }}
+.eq {{
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 0.7rem 0.4rem; text-align: center; min-width: 0;
+}}
+.eq-icon {{ font-size: 1.1rem; }}
+.eq-value {{
+  color: var(--text-1); font-size: clamp(1rem, 4.5vw, 1.2rem);
+  font-weight: 650; line-height: 1.15; margin-top: 2px; overflow-wrap: anywhere;
+}}
+.eq-label {{ color: var(--text-muted); font-size: 0.8rem; line-height: 1.3; margin-top: 3px; }}
+
 /* ---------- Streamlit widget polish ---------- */
 section[data-testid="stSidebar"] {{ background: {SURFACE}; border-right: 1px solid var(--border); }}
 div[data-testid="stMetricValue"] {{ color: var(--text-1); }}
-.stTabs [data-baseweb="tab-list"] {{ gap: 2px; border-bottom: 1px solid var(--border); }}
-.stTabs [data-baseweb="tab"] {{ color: var(--text-muted); font-size: 0.87rem; }}
+
+/* Tab strip: let it scroll sideways instead of crushing the labels together,
+   which is what made "Cooling Laundry Every other device" read as one line. */
+.stTabs [data-baseweb="tab-list"] {{
+  gap: 2px; border-bottom: 1px solid var(--border);
+  overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none;
+}}
+.stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {{ display: none; }}
+.stTabs [data-baseweb="tab"] {{
+  color: var(--text-muted); font-size: 0.88rem; white-space: nowrap; padding: 0 12px;
+}}
 .stTabs [aria-selected="true"] {{ color: var(--accent) !important; }}
+
 div[data-testid="stExpander"] details {{
   border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
 }}
 .stButton button {{ border-radius: 10px; border: 1px solid var(--border); }}
+/* A primary button paints itself in the accent green and picks a light label,
+   which leaves pale green on green. Force the dark ink instead. */
+.stButton button[kind="primary"],
+.stFormSubmitButton button[kind="primaryFormSubmit"] {{
+  background: {ACCENT}; color: {ACCENT_INK}; border-color: {ACCENT}; font-weight: 600;
+}}
+.stButton button[kind="primary"]:hover,
+.stFormSubmitButton button[kind="primaryFormSubmit"]:hover {{
+  background: #1ea850; color: {ACCENT_INK}; border-color: #1ea850;
+}}
 hr {{ border-color: var(--border); }}
 
-/* Phone width: no horizontal scroll, 16px gutter */
-@media (max-width: 640px) {{
-  .block-container {{ padding-left: 16px !important; padding-right: 16px !important; }}
-  .hero-value {{ font-size: 2.4rem; }}
-  .tile-value {{ font-size: 1.3rem; }}
-}}
+/* Charts and tables must never force the page sideways on a phone. */
+[data-testid="stPlotlyChart"], .js-plotly-plot {{ max-width: 100%; }}
+[data-testid="stDataFrame"] {{ max-width: 100%; }}
 </style>
 """

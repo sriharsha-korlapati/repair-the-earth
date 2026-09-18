@@ -27,10 +27,11 @@ To update the existing `rte-carbon` app in place instead of creating a second
 one, open it from your Streamlit Cloud dashboard, choose **Settings → General**,
 and switch its branch to this one. That keeps the URL your team already has.
 
-### Optional: switch on the AI coach
+### Optional: switch on the Ask page's model features
 
 The dashboard is fully functional without this — every number, recommendation and
-insight is computed locally. The key only enables the conversational coach.
+insight is computed locally, and voice input runs entirely in the browser. The key
+enables two things: conversational answers, and reading photos.
 
 In the app's **Settings → Secrets**, paste:
 
@@ -43,9 +44,15 @@ key lives in Streamlit's secret store, never in the repository — `.gitignore`
 already excludes `.streamlit/secrets.toml` so a local key cannot be committed by
 accident.
 
-**Cost note:** every question on the coach page is an API call billed to that key.
-If you are demoing on a shared screen at TerraThon, either leave the key out (the
-page falls back to the offline engine and says so) or expect a few rupees of usage.
+**Cost note:** every question and every photo read on the Ask page is an API call
+billed to that key. If you are demoing on a shared screen at TerraThon, either
+leave the key out (the page falls back to the offline engine and says so) or
+expect a few rupees of usage.
+
+**Microphone note:** browsers only allow microphone access over HTTPS. Streamlit
+Community Cloud serves HTTPS, so voice works there. On a local `streamlit run`,
+`localhost` counts as a secure origin, so it works there too — but a bare LAN IP
+like `http://192.168.1.5:8501` will not get microphone permission.
 
 ## Running it locally
 

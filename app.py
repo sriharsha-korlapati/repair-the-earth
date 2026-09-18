@@ -36,8 +36,8 @@ from modules import (
     about_page,
     actions_page,
     appliances,
+    ask_page,
     campus,
-    coach_page,
     commute,
     dashboard,
     electricity,
@@ -51,7 +51,10 @@ st.set_page_config(
     page_title="Repair the Earth · Carbon Intelligence",
     page_icon="🌍",
     layout="wide",
-    initial_sidebar_state="expanded",
+    # "auto" keeps the sidebar open on a desktop and collapsed on a phone.
+    # With "expanded", a phone user landed on a full-screen nav panel with
+    # the dashboard hidden behind it.
+    initial_sidebar_state="auto",
 )
 
 C.inject_css()
@@ -81,7 +84,7 @@ NAV = [
     ("campus", "🎓 Campus life"),
     ("actions", "🎯 What to do"),
     ("plan", "📉 Net-zero plan"),
-    ("coach", "🤖 Ask the coach"),
+    ("ask", "💬 Ask anything"),
     ("about", "📖 Method & export"),
 ]
 
@@ -91,9 +94,15 @@ NAV = [
 # ---------------------------------------------------------------------------
 
 def sidebar() -> str:
+    """
+    Navigation plus settings.
+
+    Everything below the nav lives in collapsed expanders. On a phone the
+    sidebar IS the screen while it is open, so it has to be a short list of
+    destinations, not a long settings form the user must scroll past.
+    """
     with st.sidebar:
         st.markdown("### 🌍 Repair the Earth")
-        st.caption("Carbon Intelligence v2")
 
         labels = [label for _, label in NAV]
         keys = [key for key, _ in NAV]
@@ -102,97 +111,81 @@ def sidebar() -> str:
         choice = st.radio("Go to", labels, index=index, label_visibility="collapsed")
         page = keys[labels.index(choice)]
 
-        st.divider()
-        st.markdown("##### Your profile")
-        PROFILE["name"] = st.text_input("Name (optional)", PROFILE.get("name", ""))
-        PROFILE["persona"] = st.selectbox(
-            "You are a", state.PERSONAS,
-            index=state.PERSONAS.index(PROFILE.get("persona", state.PERSONAS[0]))
-            if PROFILE.get("persona") in state.PERSONAS else 0,
-        )
-        PROFILE["campus"] = st.text_input("Campus / institution",
-                                          PROFILE.get("campus", ""))
-        locations = list(F.RAINFALL_MM.keys())
-        PROFILE["location"] = st.selectbox(
-            "Location", locations,
-            index=locations.index(PROFILE.get("location", locations[0]))
-            if PROFILE.get("location") in locations else 0,
-            help="Used for local rainfall in the rainwater-harvesting estimate.",
-        )
-        PROFILE["household_size"] = st.number_input(
-            "People sharing your bills", min_value=1, max_value=20,
-            value=int(PROFILE.get("household_size", 4)),
-            help="Shared electricity and water are divided by this wherever you "
-                 "tick 'this meter is shared'.",
-        )
-
-        st.divider()
-        st.markdown("##### Grid & tariff")
-        presets = list(F.GRID_PRESETS.keys())
-        PROFILE["grid_preset"] = st.selectbox(
-            "Your grid", presets + ["Custom"],
-            index=(presets + ["Custom"]).index(PROFILE.get("grid_preset", presets[0]))
-            if PROFILE.get("grid_preset") in presets + ["Custom"] else 0,
-        )
-        if PROFILE["grid_preset"] == "Custom":
-            PROFILE["grid_ef"] = st.number_input(
-                "Grid factor (kg CO₂/kWh)", min_value=0.1, max_value=1.5,
-                value=float(PROFILE.get("grid_ef", F.DEFAULT_GRID_EF)), step=0.01,
+        with st.expander("Profile"):
+            PROFILE["name"] = st.text_input("Name (optional)", PROFILE.get("name", ""))
+            PROFILE["persona"] = st.selectbox(
+                "You are a", state.PERSONAS,
+                index=state.PERSONAS.index(PROFILE.get("persona", state.PERSONAS[0]))
+                if PROFILE.get("persona") in state.PERSONAS else 0,
             )
-        else:
-            PROFILE["grid_ef"] = F.GRID_PRESETS[PROFILE["grid_preset"]]
-        PROFILE["include_td_losses"] = st.checkbox(
-            f"Add {F.TD_LOSS_FRACTION:.0%} transmission losses",
-            value=bool(PROFILE.get("include_td_losses", True)),
-            help="About a tenth of generated electricity never reaches your meter, "
-                 "so a consumed kWh carries more carbon than a generated one.",
-        )
-        st.caption(
-            f"At your meter: **{calculators.grid_ef(PROFILE):.3f} kg CO₂/kWh**"
-        )
-
-        tariffs = list(F.TARIFF_PRESETS.keys())
-        PROFILE["tariff_preset"] = st.selectbox(
-            "Tariff band", tariffs + ["Custom"],
-            index=(tariffs + ["Custom"]).index(PROFILE.get("tariff_preset", tariffs[1]))
-            if PROFILE.get("tariff_preset") in tariffs + ["Custom"] else 1,
-        )
-        if PROFILE["tariff_preset"] == "Custom":
-            PROFILE["tariff"] = st.number_input(
-                "₹ per kWh", min_value=0.5, max_value=30.0,
-                value=float(PROFILE.get("tariff", F.DEFAULT_TARIFF)), step=0.25,
+            PROFILE["campus"] = st.text_input("Campus", PROFILE.get("campus", ""))
+            locations = list(F.RAINFALL_MM.keys())
+            PROFILE["location"] = st.selectbox(
+                "Location", locations,
+                index=locations.index(PROFILE.get("location", locations[0]))
+                if PROFILE.get("location") in locations else 0,
+                help="Sets local rainfall for the rainwater estimate.",
             )
-        else:
-            PROFILE["tariff"] = F.TARIFF_PRESETS[PROFILE["tariff_preset"]]
+            PROFILE["household_size"] = st.number_input(
+                "People sharing your bills", min_value=1, max_value=20,
+                value=int(PROFILE.get("household_size", 4)),
+                help="Shared electricity and water are divided by this.",
+            )
 
-        st.divider()
-        st.markdown("##### Electricity accounting")
-        st.caption(
-            "Your bill and your appliance list measure the same kWh. One is the "
-            "authoritative total; the other becomes a cross-check."
-        )
-        source_labels = {
-            "bill": "My bill (appliances = diagnostic)",
-            "appliances": "My appliance model (bill = cross-check)",
-        }
-        chosen = st.radio(
-            "Authoritative source",
-            list(source_labels.keys()),
-            format_func=lambda key: source_labels[key],
-            index=0 if PROFILE.get("electricity_source", "bill") == "bill" else 1,
-            label_visibility="collapsed",
-        )
-        PROFILE["electricity_source"] = chosen
+        with st.expander("Grid & tariff"):
+            presets = list(F.GRID_PRESETS.keys())
+            PROFILE["grid_preset"] = st.selectbox(
+                "Your grid", presets + ["Custom"],
+                index=(presets + ["Custom"]).index(PROFILE.get("grid_preset", presets[0]))
+                if PROFILE.get("grid_preset") in presets + ["Custom"] else 0,
+            )
+            if PROFILE["grid_preset"] == "Custom":
+                PROFILE["grid_ef"] = st.number_input(
+                    "kg CO₂ per kWh", min_value=0.1, max_value=1.5,
+                    value=float(PROFILE.get("grid_ef", F.DEFAULT_GRID_EF)), step=0.01,
+                )
+            else:
+                PROFILE["grid_ef"] = F.GRID_PRESETS[PROFILE["grid_preset"]]
+            PROFILE["include_td_losses"] = st.checkbox(
+                f"Add {F.TD_LOSS_FRACTION:.0%} grid losses",
+                value=bool(PROFILE.get("include_td_losses", True)),
+                help="About a tenth of generated power never reaches your meter.",
+            )
+            st.caption(f"At your meter: **{calculators.grid_ef(PROFILE):.3f} kg CO₂/kWh**")
 
-        st.divider()
-        if st.button("↺ Reset to demo defaults", width="stretch"):
+            tariffs = list(F.TARIFF_PRESETS.keys())
+            PROFILE["tariff_preset"] = st.selectbox(
+                "Tariff band", tariffs + ["Custom"],
+                index=(tariffs + ["Custom"]).index(PROFILE.get("tariff_preset", tariffs[1]))
+                if PROFILE.get("tariff_preset") in tariffs + ["Custom"] else 1,
+            )
+            if PROFILE["tariff_preset"] == "Custom":
+                PROFILE["tariff"] = st.number_input(
+                    "₹ per kWh", min_value=0.5, max_value=30.0,
+                    value=float(PROFILE.get("tariff", F.DEFAULT_TARIFF)), step=0.25,
+                )
+            else:
+                PROFILE["tariff"] = F.TARIFF_PRESETS[PROFILE["tariff_preset"]]
+
+        with st.expander("Electricity accounting"):
+            st.caption(
+                "Your bill and your appliance list measure the same kWh. One is "
+                "the total; the other becomes a cross-check."
+            )
+            source_labels = {
+                "bill": "My bill",
+                "appliances": "My appliance model",
+            }
+            PROFILE["electricity_source"] = st.radio(
+                "Authoritative source",
+                list(source_labels.keys()),
+                format_func=lambda key: source_labels[key],
+                index=0 if PROFILE.get("electricity_source", "bill") == "bill" else 1,
+            )
+
+        if st.button("↺ Reset", width="stretch"):
             state.reset_state(st.session_state)
             st.rerun()
-        st.caption(
-            "Built on the Repair the Earth carbon calculator. "
-            "Emission factors are India-relevant public estimates - see "
-            "**Method & export** for every one of them."
-        )
     return page
 
 
@@ -256,8 +249,8 @@ elif page == "actions":
 elif page == "plan":
     plan_page.render(footprint, PROFILE, actions, INPUTS["plan"])
 
-elif page == "coach":
-    coach_page.render(footprint, PROFILE, actions, st.session_state)
+elif page == "ask":
+    ask_page.render(footprint, PROFILE, actions, st.session_state)
 
 elif page == "about":
     about_page.render(footprint, PROFILE, actions, INPUTS["plan"])

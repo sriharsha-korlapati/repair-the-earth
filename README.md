@@ -26,8 +26,8 @@ was no total footprint, no comparison and no advice.
 | Advice | 2 fixed lines of generic text | **engine-generated, costed, ranked** per user |
 | Economics | none | ₹ per tonne avoided, payback, marginal abatement curve |
 | Planning | none | net-zero pathway, pledges, campus scale-up |
-| AI | none | optional Claude coach over a deterministic engine |
-| Tests | none | 30 tests covering arithmetic, accounting and UI |
+| AI | none | ask by text, voice or photo, over a deterministic engine |
+| Tests | none | 31 tests covering arithmetic, accounting and UI |
 
 v1 is preserved at `legacy/app_v1.py` so the two can be demonstrated side by side.
 
@@ -65,11 +65,13 @@ core/
   recommend.py         Action catalogue + marginal abatement costing
   insights.py          Rule-based narrative (deterministic, offline, auditable)
   pathway.py           Net-zero glide path, residual, offsets
-  ai.py                Optional Claude coach (degrades gracefully)
+  ai.py                Optional Claude conversation (degrades gracefully)
+  vision.py            Photo -> structured observation -> the same engine
   report.py            Markdown / CSV export
 modules/               One file per page, UI only
 ui/
-  theme.py             Design tokens + CSS
+  theme.py             Mobile-first design tokens + CSS
+  mic.py               Browser speech-to-text component (no key, no upload)
   components.py        Stat tiles, hero, meters, insight cards
   charts.py            Plotly builders, each with a table-view twin
 tests/                 30 tests — python tests/test_engine.py && python tests/test_pages.py
@@ -119,17 +121,27 @@ several, and the marginal abatement cost curve shows them at a glance.
 
 ---
 
-## Optional AI coach
+## Ask anything — text, voice or photo
 
-The dashboard is **fully functional with no API key** — every number, recommendation
-and insight is computed locally. The model is a conversation layer on top of a
-deterministic engine: it is handed the finished numbers as grounding and asked to
-interpret, prioritise and answer follow-ups. It is never asked to do the
-arithmetic, because a language model guessing at emission factors is exactly what
-this project exists to replace.
+One page, three ways in:
 
-To switch it on, set `ANTHROPIC_API_KEY` in the environment, or in
-`.streamlit/secrets.toml` (or *Settings → Secrets* on Streamlit Community Cloud).
+- **Text** — a question in your own words.
+- **Voice** — the browser's own speech recogniser transcribes into the text box,
+  so you can correct a misheard word before sending. No API key, no audio leaves
+  the device. (Firefox has no Web Speech API; the page says so and the text box
+  still works.)
+- **Photo** — an electricity bill, a waste pile or a plate after a meal.
+
+**The photo path is the important one architecturally.** The model reports only
+what it can *see* — units on a bill, streams in a pile, grams left on a plate —
+as structured observations. Those go through the same `core/factors.py`
+coefficients as every other module. Photograph a bill and type the same bill, and
+you get the identical number. The model does vision; the engine does physics.
+
+The dashboard is **fully functional with no API key** — every number,
+recommendation and insight is computed locally. Text and photo answers need a
+key; set `ANTHROPIC_API_KEY` in the environment or in `.streamlit/secrets.toml`
+(*Settings → Secrets* on Streamlit Community Cloud).
 
 ---
 
@@ -148,7 +160,7 @@ the app under *Method & export*, so anyone can audit the model and argue with it
 
 ```bash
 python tests/test_engine.py    # 21 tests: arithmetic, accounting rules, guard rails
-python tests/test_pages.py     #  9 tests: every page renders, interactions behave
+python tests/test_pages.py     # 10 tests: every page renders, interactions behave
 ```
 
 The UI tests use Streamlit's own `AppTest` harness — real script, real widget

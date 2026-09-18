@@ -97,10 +97,36 @@ def tile(label: str, value: float | str, unit: str = "", foot: str = "",
     )
 
 
+def _tile_html(label: str, value: float | str, unit: str = "", foot: str = "",
+               delta: str | None = None, delta_good: bool = True) -> str:
+    shown = _compact(value) if isinstance(value, (int, float)) else str(value)
+    delta_html = ""
+    if delta:
+        cls = "tile-delta-good" if delta_good else "tile-delta-bad"
+        delta_html = f'<div class="{cls}">{html.escape(delta)}</div>'
+    return (
+        f'<div class="tile">'
+        f'<div class="tile-label">{html.escape(label)}</div>'
+        f'<div class="tile-value">{shown}'
+        f'<span class="tile-unit">{html.escape(unit)}</span></div>'
+        f'{delta_html}'
+        + (f'<div class="tile-foot">{html.escape(foot)}</div>' if foot else "")
+        + '</div>'
+    )
+
+
 def tile_row(tiles: list[dict]) -> None:
-    for col, spec in zip(st.columns(len(tiles)), tiles):
-        with col:
-            tile(**spec)
+    """
+    A row of stat tiles that reflows: two-up on a phone, N-up on a wide screen.
+
+    st.columns would keep all N side by side at any width, which is what
+    squeezed four tiles into 90px each and made the labels collide.
+    """
+    cells = "".join(_tile_html(**spec) for spec in tiles)
+    st.markdown(
+        f'<div class="tile-grid" style="--cols:{len(tiles)}">{cells}</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def hero(label: str, value: str, unit: str, note: str,
@@ -120,7 +146,7 @@ def hero(label: str, value: str, unit: str, note: str,
     st.markdown(
         f"""
         <div class="hero">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+          <div class="hero-row">
             <div>
               <div class="hero-label">{html.escape(label)}</div>
               <div class="hero-value">{html.escape(value)}
@@ -163,18 +189,14 @@ def insight(text: str, kind: str = "info") -> None:
 
 
 def equivalence_chips(rows: list[tuple[str, str, str]]) -> None:
-    for col, (icon, value, label) in zip(st.columns(len(rows)), rows):
-        with col:
-            st.markdown(
-                f"""
-                <div class="tile" style="text-align:center;">
-                  <div style="font-size:1.25rem;">{icon}</div>
-                  <div class="tile-value" style="font-size:1.25rem;">{html.escape(value)}</div>
-                  <div class="tile-foot">{html.escape(label)}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+    """Three-up on a phone, six-up on a wide screen."""
+    cells = "".join(
+        f'<div class="eq"><div class="eq-icon">{icon}</div>'
+        f'<div class="eq-value">{html.escape(value)}</div>'
+        f'<div class="eq-label">{html.escape(label)}</div></div>'
+        for icon, value, label in rows
+    )
+    st.markdown(f'<div class="eq-grid">{cells}</div>', unsafe_allow_html=True)
 
 
 def assumptions(lines: list[str]) -> None:
@@ -189,12 +211,13 @@ def action_card(title: str, body: str, chips: list[tuple[str, str]]) -> None:
     chip_html = "".join(
         f'<span class="chip chip-{cls}">{html.escape(text)}</span>' for cls, text in chips
     )
+    chip_html = f'<div class="chip-row">{chip_html}</div>'
     st.markdown(
         f"""
         <div class="action">
           <div class="action-title">{html.escape(title)}</div>
           <div class="action-body">{html.escape(body)}</div>
-          <div style="margin-top:7px;">{chip_html}</div>
+          {chip_html}
         </div>
         """,
         unsafe_allow_html=True,

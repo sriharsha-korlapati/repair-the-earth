@@ -24,7 +24,7 @@ from streamlit.testing.v1 import AppTest  # noqa: E402
 from core import engine, state  # noqa: E402
 
 PAGES = ["dashboard", "electricity", "commute", "appliances", "water",
-         "waste", "campus", "actions", "plan", "coach", "about"]
+         "waste", "campus", "actions", "plan", "ask", "about"]
 
 TIMEOUT = 180
 
@@ -169,17 +169,40 @@ def test_dashboard_survives_completely_empty_inputs():
     assert engine.build(blank, at.session_state["profile"]).annual_kg == 0.0
 
 
-def test_the_coach_page_works_without_an_api_key():
+def test_the_ask_page_works_without_an_api_key():
     """The dashboard must be fully usable with no model access at all."""
     saved = os.environ.pop("ANTHROPIC_API_KEY", None)
     try:
-        at = _app("coach")
+        at = _app("ask")
         assert not at.exception, _errors(at)
         body = " ".join(m.value for m in at.markdown)
         assert "offline" in body.lower()
     finally:
         if saved is not None:
             os.environ["ANTHROPIC_API_KEY"] = saved
+
+
+def test_vision_estimates_are_computed_by_the_engine_not_the_model():
+    """
+    The model reports observations; core/factors.py turns them into carbon.
+    A photographed bill and a typed bill must agree exactly.
+    """
+    from core import calculators, vision
+
+    profile = copy.deepcopy(state.DEFAULT_PROFILE)
+    observation = {"kind": "electricity_bill", "confidence": "high",
+                   "summary": "bill", "notes": "",
+                   "electricity": {"units_kwh": 257.0, "amount_inr": 1800.0,
+                                   "period_days": 30}}
+    from_photo = vision.estimate(observation, profile)
+    expected = 257.0 * calculators.grid_ef(profile)
+    assert abs(from_photo.once_kg - expected) < 0.01
+
+    # An unreadable image must not invent a number.
+    blank = vision.estimate({"kind": "other", "confidence": "low",
+                             "summary": "", "notes": "too blurry"}, profile)
+    assert blank.once_kg == 0.0 and blank.annual_kg == 0.0
+    assert blank.caveats
 
 
 if __name__ == "__main__":

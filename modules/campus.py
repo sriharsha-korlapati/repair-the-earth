@@ -20,61 +20,49 @@ from ui import charts, components as C, theme as T
 
 def _quantity_rows(title: str, caption: str, catalogue: dict, store: dict,
                    unit: str, key_prefix: str, max_value: float = 60.0) -> None:
+    """
+    A labelled number input per item, two to a row.
+
+    The previous version put a markdown label div beside the widget in a fixed
+    three-column row. Those columns never stack, so on a phone the label and
+    the input were fighting over 90px each. A widget's own label wraps, aligns
+    and stacks for free, and the per-item note moves into its tooltip.
+    """
     st.markdown(f"###### {title}")
     st.caption(caption)
-    for name, spec in catalogue.items():
-        cols = st.columns([2.4, 1.1, 2.0])
-        cols[0].markdown(
-            f"<div style='padding-top:6px;color:{T.TEXT_2};font-size:0.88rem;'>{name}"
-            f"</div>", unsafe_allow_html=True,
-        )
-        store[name] = cols[1].number_input(
-            unit, min_value=0.0, max_value=max_value, step=0.5,
-            value=float(store.get(name, 0.0)),
-            key=f"{key_prefix}_{name}", label_visibility="collapsed",
-        )
-        cols[2].markdown(
-            f"<div style='padding-top:6px;color:{T.TEXT_MUTED};font-size:0.77rem;'>"
-            f"{spec['ef']:.3f} kg CO₂e each · {spec['note']}</div>",
-            unsafe_allow_html=True,
-        )
+    items = list(catalogue.items())
+    for index in range(0, len(items), 2):
+        for col, (name, spec) in zip(st.columns(2), items[index:index + 2]):
+            with col:
+                store[name] = st.number_input(
+                    name, min_value=0.0, max_value=max_value, step=0.5,
+                    value=float(store.get(name, 0.0)),
+                    key=f"{key_prefix}_{name}",
+                    help=f"{spec['ef']:.3f} kg CO₂e each. {spec['note']}",
+                )
 
 
 def render(inputs: dict, profile: dict) -> None:
-    C.section(
-        "🎓 Campus life",
-        "Food, single-use plastic, printing, screen time and the embodied carbon "
-        "of what you own. None of this was in v1, and for most students it is the "
-        "largest slice of the whole footprint.",
-    )
+    C.section("🎓 Campus life",
+              "Food, single-use, screens, and what you own.")
 
     tab_food, tab_single, tab_digital, tab_goods = st.tabs(
         ["Food & drink", "Single-use", "Digital", "Things you own"]
     )
 
     with tab_food:
-        st.markdown("###### Meals a week, by type")
-        st.caption(
-            "Three meals a day is 21 a week. Count what you actually eat - mess, "
-            "canteen, home and outside together."
-        )
+        st.markdown("###### Meals a week")
+        st.caption("Three a day is 21 a week. Mess, canteen, home and outside.")
         meals = inputs.setdefault("meals", {})
-        for name, spec in F.MEALS.items():
-            cols = st.columns([2.2, 1.1, 2.2])
-            cols[0].markdown(
-                f"<div style='padding-top:6px;color:{T.TEXT_2};font-size:0.88rem;'>"
-                f"{name}</div>", unsafe_allow_html=True,
-            )
-            meals[name] = cols[1].number_input(
-                "per week", min_value=0.0, max_value=25.0, step=1.0,
-                value=float(meals.get(name, 0.0)),
-                key=f"meal_{name}", label_visibility="collapsed",
-            )
-            cols[2].markdown(
-                f"<div style='padding-top:6px;color:{T.TEXT_MUTED};font-size:0.77rem;'>"
-                f"{spec['ef']:.2f} kg CO₂e per meal · {spec['note']}</div>",
-                unsafe_allow_html=True,
-            )
+        meal_items = list(F.MEALS.items())
+        for index in range(0, len(meal_items), 2):
+            for col, (name, spec) in zip(st.columns(2), meal_items[index:index + 2]):
+                with col:
+                    meals[name] = st.number_input(
+                        name, min_value=0.0, max_value=25.0, step=1.0,
+                        value=float(meals.get(name, 0.0)), key=f"meal_{name}",
+                        help=f"{spec['ef']:.2f} kg CO₂e per meal. {spec['note']}",
+                    )
 
         total_meals = sum(float(v) for v in meals.values())
         if total_meals:
@@ -91,9 +79,8 @@ def render(inputs: dict, profile: dict) -> None:
         inputs["plate_waste_g_day"] = st.slider(
             "Food left on your plate (grams a day)", 0.0, 500.0,
             float(inputs.get("plate_waste_g_day", 120.0)), step=10.0,
-            help=f"Charged at {F.PLATE_WASTE_EF:g} kg CO₂e per kg, because wasted food "
-                 "carries everything spent growing, moving and cooking it. A typical "
-                 "mess plate leaves 100-200 g.",
+            help=f"{F.PLATE_WASTE_EF:g} kg CO₂e per kg - wasted food carries "
+                 "everything spent growing and cooking it. A mess plate leaves 100-200 g.",
         )
         inputs["laundry_kg_week"] = st.slider(
             "Clothes sent to a laundry service (kg a week)", 0.0, 20.0,
@@ -111,36 +98,26 @@ def render(inputs: dict, profile: dict) -> None:
     with tab_digital:
         _quantity_rows(
             "Digital use",
-            "Hours a week, except cloud storage which is per month. This counts "
-            "network and data-centre energy only - your laptop and phone charging "
-            "are already measured under Appliances, so nothing is double-counted.",
+            "Hours a week (cloud storage is per month). Network and data centre "
+            "only - device charging sits under Appliances.",
             F.DIGITAL, inputs.setdefault("digital", {}), "per week", "dig", 168.0,
         )
 
     with tab_goods:
         st.markdown("###### Things you own")
-        st.caption(
-            "Manufacturing carbon, spread over the item's service life. This is the "
-            "footprint you already paid for and keep paying off - which is why "
-            "keeping something longer is a real climate action."
-        )
+        st.caption("Manufacturing carbon, spread over the item's life. Keeping "
+                   "something longer is a real cut.")
         goods = inputs.setdefault("goods", {})
-        for name, spec in F.GOODS.items():
-            cols = st.columns([2.2, 1.1, 2.2])
-            cols[0].markdown(
-                f"<div style='padding-top:6px;color:{T.TEXT_2};font-size:0.88rem;'>"
-                f"{name}</div>", unsafe_allow_html=True,
-            )
-            goods[name] = cols[1].number_input(
-                "owned", min_value=0, max_value=30, value=int(goods.get(name, 0)),
-                key=f"goods_{name}", label_visibility="collapsed",
-            )
-            cols[2].markdown(
-                f"<div style='padding-top:6px;color:{T.TEXT_MUTED};font-size:0.77rem;'>"
-                f"{spec['ef']:,.0f} kg CO₂e to make · assumed "
-                f"{spec['life_years']}-year life · {spec['note']}</div>",
-                unsafe_allow_html=True,
-            )
+        goods_items = list(F.GOODS.items())
+        for index in range(0, len(goods_items), 2):
+            for col, (name, spec) in zip(st.columns(2), goods_items[index:index + 2]):
+                with col:
+                    goods[name] = st.number_input(
+                        name, min_value=0, max_value=30, value=int(goods.get(name, 0)),
+                        key=f"goods_{name}",
+                        help=f"{spec['ef']:,.0f} kg CO₂e to make, over an assumed "
+                             f"{spec['life_years']}-year life. {spec['note']}",
+                    )
 
     # Every widget above has already written into `inputs` during this run, so
     # the result is computed HERE rather than passed in. Computing it before the
@@ -166,12 +143,10 @@ def render(inputs: dict, profile: dict) -> None:
     for note in result.notes:
         C.insight(note)
 
-    C.assumptions([
-        "Meal factors are per-meal averages for Indian portions and cover farming, "
-        "processing and cooking. Ruminant meat dominates because of enteric methane.",
-        "Digital factors are network plus data centre only. Device charging lives in "
-        "the Appliances module - the boundary is deliberate and stated so the two "
-        "modules can be added together safely.",
-        "Goods are amortised: a 300 kg laptop over a five-year life is 60 kg a year, "
-        "which is why the model rewards keeping it a sixth year.",
-    ])
+    with st.expander("Assumptions"):
+        C.assumptions([
+            "Meal factors cover farming, processing and cooking. Ruminant meat "
+            "dominates because of enteric methane.",
+            "Digital is network + data centre only; charging sits in Appliances.",
+            "Goods are amortised over their service life.",
+        ])

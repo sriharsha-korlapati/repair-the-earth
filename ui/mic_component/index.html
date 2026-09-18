@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8" />
+<style>
+  html, body { margin: 0; padding: 0; background: transparent;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #wrap { display: flex; align-items: center; gap: 10px; }
+  #mic {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    border: 1px solid rgba(255,255,255,0.14); background: #0f172a; color: #e2e8f0;
+    border-radius: 10px; padding: 9px 16px; font-size: 15px; cursor: pointer;
+    min-height: 42px;
+  }
+  #mic:hover { border-color: #22c55e; }
+  #mic.live { background: #22c55e; color: #052e16; border-color: #22c55e; }
+  #mic:disabled { opacity: .55; cursor: not-allowed; }
+  #dot { width: 9px; height: 9px; border-radius: 50%; background: #64748b; }
+  #mic.live #dot { background: #052e16; }
+  #status { font-size: 13px; color: #94a3b8; line-height: 1.35; }
+</style>
+</head>
+<body>
+  <div id="wrap">
+    <button id="mic" type="button"><span id="dot"></span><span id="txt">Speak</span></button>
+    <span id="status"></span>
+  </div>
+<script>
+// Streamlit's component protocol, written directly rather than via the npm
+// helper, so this needs no build step and ships as a plain file.
+function send(value) {
+  // dataType is required: without it Streamlit drops the message and the
+  // component silently never returns a value.
+  window.parent.postMessage({
+    isStreamlitMessage: true,
+    type: "streamlit:setComponentValue",
+    value: value,
+    dataType: "json"
+  }, "*");
+}
+function setHeight(h) {
+  window.parent.postMessage(
+    {isStreamlitMessage: true, type: "streamlit:setFrameHeight", height: h}, "*");
+}
+window.parent.postMessage(
+  {isStreamlitMessage: true, type: "streamlit:componentReady", apiVersion: 1}, "*");
+setHeight(52);
+
+const btn = document.getElementById("mic");
+const txt = document.getElementById("txt");
+const status = document.getElementById("status");
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if (!SR) {
+  // Recognition is missing on some browsers (notably Firefox). Say so plainly
+  // rather than presenting a button that silently does nothing.
+  btn.disabled = true;
+  txt.textContent = "Mic unavailable";
+  status.textContent = "This browser has no speech recognition. Chrome, Edge and Safari do.";
+} else {
+  const rec = new SR();
+  rec.lang = "en-IN";
+  rec.continuous = true;
+  rec.interimResults = true;
+  let listening = false, finalText = "", turn = 0;
+
+  btn.addEventListener("click", () => {
+    if (listening) { rec.stop(); return; }
+    finalText = "";
+    try { rec.start(); } catch (e) { status.textContent = "Could not start: " + e.message; }
+  });
+
+  rec.onstart = () => {
+    listening = true; btn.classList.add("live");
+    txt.textContent = "Stop"; status.textContent = "Listening...";
+  };
+  rec.onresult = (event) => {
+    let interim = "";
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const chunk = event.results[i][0].transcript;
+      if (event.results[i].isFinal) finalText += chunk + " ";
+      else interim += chunk;
+    }
+    status.textContent = (finalText + interim).slice(-90) || "Listening...";
+  };
+  rec.onerror = (event) => {
+    status.textContent = event.error === "not-allowed"
+      ? "Microphone permission denied."
+      : "Mic error: " + event.error;
+    btn.classList.remove("live"); txt.textContent = "Speak"; listening = false;
+  };
+  rec.onend = () => {
+    listening = false; btn.classList.remove("live"); txt.textContent = "Speak";
+    const said = finalText.trim();
+    if (said) {
+      status.textContent = "Heard it - check the box below.";
+      // The sequence number makes each utterance a distinct value, so saying
+      // the same phrase twice is not swallowed as "no change".
+      send({text: said, n: ++turn});
+    }
+    else if (!status.textContent.startsWith("Mic")) status.textContent = "Nothing heard.";
+  };
+
+  // A hook so the round-trip can be exercised without a real microphone.
+  window.__setTranscript = (t) => send({text: t, n: ++turn});
+}
+</script>
+</body>
+</html>

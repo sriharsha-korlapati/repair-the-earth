@@ -9,13 +9,7 @@ from ui import charts, components as C, theme as T
 
 
 def render(inputs: dict, profile: dict) -> None:
-    C.section(
-        "⚡ Electricity",
-        "Your metered grid consumption. v1 divided the bill by a flat ₹7 and "
-        "multiplied by one number; this version accounts for the tariff you "
-        "actually pay, the grid you are actually on, who shares the meter, and "
-        "anything you generate yourself.",
-    )
+    C.section("⚡ Electricity", "What the meter actually bills you for.")
 
     left, right = st.columns([1, 1], gap="large")
 
@@ -25,8 +19,8 @@ def render(inputs: dict, profile: dict) -> None:
             ["Monthly bill (₹)", "Monthly units (kWh)"],
             index=0 if inputs.get("entry_mode", "").startswith("Monthly bill") else 1,
             horizontal=True,
-            help="Units are more accurate if your bill shows them - tariffs are "
-                 "slab-based, so dividing a bill by an average rate is an estimate.",
+            help="Units are more accurate. Tariffs are slab-based, so dividing a "
+                 "bill by an average rate is only an estimate.",
         )
         if inputs["entry_mode"].startswith("Monthly bill"):
             inputs["monthly_bill"] = st.number_input(
@@ -42,21 +36,18 @@ def render(inputs: dict, profile: dict) -> None:
         inputs["share_with_household"] = st.checkbox(
             f"This meter is shared between {profile.get('household_size')} people",
             value=bool(inputs.get("share_with_household", True)),
-            help="If the bill covers a whole family or hostel room, your personal "
-                 "share is the bill divided by the people on it. Skipping this is "
-                 "the most common way a household footprint gets counted several "
-                 "times over.",
+            help="If the bill covers a family or hostel room, your share is the "
+                 "bill divided by the people on it.",
         )
 
     with right:
         inputs["solar_kw"] = st.slider(
-            "Rooftop solar installed (kW)", 0.0, 10.0,
+            "Rooftop solar (kW)", 0.0, 10.0,
             float(inputs.get("solar_kw", 0.0)), step=0.5,
-            help=f"Each kW generates about {F.SOLAR_KWH_PER_KW_PER_DAY:g} kWh a day "
-                 "on an annual average in India.",
+            help=f"Each kW makes about {F.SOLAR_KWH_PER_KW_PER_DAY:g} kWh a day.",
         )
         inputs["green_tariff_share"] = st.slider(
-            "Share of supply on a green/renewable tariff (%)", 0, 100,
+            "On a green tariff (%)", 0, 100,
             int(inputs.get("green_tariff_share", 0)), step=10,
         )
 
@@ -86,12 +77,12 @@ def render(inputs: dict, profile: dict) -> None:
     for note in result.notes:
         C.insight(note)
 
-    C.assumptions([
-        f"Grid factor: {metrics['grid_ef']:.3f} kg CO₂ per kWh at your meter "
-        f"({profile.get('grid_preset')}"
-        + (f" + {F.TD_LOSS_FRACTION:.0%} T&D losses)" if profile.get("include_td_losses")
-           else ")"),
-        f"Tariff: ₹{profile.get('tariff'):.2f} per kWh ({profile.get('tariff_preset')}).",
-        "Change either of these in the sidebar - an EV, a geyser and a grid factor "
-        "are all connected, and every module updates together.",
-    ])
+    with st.expander("Assumptions"):
+        C.assumptions([
+            f"Grid factor: {metrics['grid_ef']:.3f} kg CO₂/kWh at your meter "
+            f"({profile.get('grid_preset')}"
+            + (f" + {F.TD_LOSS_FRACTION:.0%} losses)." if profile.get("include_td_losses")
+               else ")."),
+            f"Tariff: ₹{profile.get('tariff'):.2f}/kWh ({profile.get('tariff_preset')}).",
+            "Both are set in the sidebar and every module uses them.",
+        ])

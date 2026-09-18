@@ -37,11 +37,9 @@ def render(fp: Footprint, profile: dict, actions: list, visited: set) -> None:
     st.write("")
     missing = [m for m in F.MODULE_ORDER if m not in visited]
     if missing:
-        names = ", ".join(F.MODULE_META[m]["label"] for m in missing)
         C.insight(
-            f"You are still on starting estimates for <b>{names}</b>. The total below "
-            "is a realistic profile, not your measurement, until you have opened each "
-            "module and checked its inputs.", "warn",
+            f"<b>{len(missing)} of {len(F.MODULE_ORDER)} modules</b> are still on "
+            "starting estimates - open them to make this yours.", "warn",
         )
 
     st.divider()
@@ -71,17 +69,12 @@ def render(fp: Footprint, profile: dict, actions: list, visited: set) -> None:
         st.markdown("##### How you compare")
         fig, table = charts.benchmark_chart(fp.vs_benchmarks())
         charts.render(fig, table, key="dash_bench")
-        st.caption(
-            "These markers come from national and global per-person statistics whose "
-            "scopes differ slightly from this dashboard's. Read them as signposts for "
-            "the order of magnitude, not as a precise score."
-        )
+        st.caption("Signposts for the order of magnitude - the scopes differ "
+                   "slightly from this dashboard's.")
 
     st.divider()
-    st.markdown("##### What this actually means")
-    C.equivalence_chips(fp.equivalences()[:3])
-    st.write("")
-    C.equivalence_chips(fp.equivalences()[3:])
+    st.markdown("##### What that equals")
+    C.equivalence_chips(fp.equivalences())
 
     st.divider()
     st.markdown("##### What the engine found")
@@ -93,11 +86,8 @@ def render(fp: Footprint, profile: dict, actions: list, visited: set) -> None:
         C.insight(note, "info")
 
     st.divider()
-    st.markdown("##### Biggest single line items, across every module")
-    st.caption(
-        "Ignoring module boundaries entirely: these are the individual things "
-        "driving your number."
-    )
+    st.markdown("##### Biggest single line items")
+    st.caption("Across every module, ignoring boundaries.")
     items = dict(sorted(fp.all_items().items(), key=lambda kv: kv[1],
                         reverse=True)[:10])
     if items:

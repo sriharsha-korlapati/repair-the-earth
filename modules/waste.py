@@ -16,48 +16,47 @@ from ui import charts, components as C, theme as T
 
 
 def render(inputs: dict, profile: dict) -> None:
-    C.section(
-        "♻️ Waste",
-        "Not how much you throw away - where it goes. Choosing a route for each "
-        "stream is the entire intervention, and for food waste it is the single "
-        "biggest lever available to most Indian households.",
-    )
+    C.section("♻️ Waste", "Not how much - where it goes.")
 
     streams = inputs.setdefault("streams", {})
 
-    st.markdown("###### Your weekly waste, stream by stream")
+    st.markdown("###### Weekly waste")
     for name, spec in F.WASTE_STREAMS.items():
         entry = streams.setdefault(
             name, {"kg_week": spec["default_kg_week"],
                    "route": list(spec["routes"].keys())[0]}
         )
         with st.container(border=True):
-            cols = st.columns([1.5, 1.2, 1.8])
-            cols[0].markdown(
-                f"<div style='padding-top:4px;color:{T.TEXT_1};font-size:0.9rem;"
-                f"font-weight:600;'>{name}</div>", unsafe_allow_html=True,
+            st.markdown(
+                f"<div style='color:{T.TEXT_1};font-size:0.95rem;font-weight:600;"
+                f"margin-bottom:2px;'>{name}</div>", unsafe_allow_html=True,
             )
-            entry["kg_week"] = cols[1].number_input(
+            left, right = st.columns(2)
+            entry["kg_week"] = left.number_input(
                 "kg per week", min_value=0.0, max_value=100.0, step=0.05,
                 value=float(entry.get("kg_week", spec["default_kg_week"])),
                 key=f"waste_kg_{name}",
             )
             routes = list(spec["routes"].keys())
-            entry["route"] = cols[2].selectbox(
+            entry["route"] = right.selectbox(
                 "Where it goes", routes,
                 index=routes.index(entry.get("route", routes[0]))
                 if entry.get("route") in routes else 0,
                 key=f"waste_route_{name}",
+                # The long explanation lives in the tooltip. Printed under every
+                # one of seven streams it turned the page into a wall of text.
+                help=f"Scrap value about ₹{spec['value_per_kg']:,.0f}/kg. {spec['note']}",
             )
             chosen_ef = spec["routes"][entry["route"]]
             best_ef = min(spec["routes"].values())
-            colour = T.GOOD if chosen_ef <= best_ef else T.WARNING if chosen_ef < 1.0 else T.CRITICAL
+            colour = (T.GOOD if chosen_ef <= best_ef
+                      else T.WARNING if chosen_ef < 1.0 else T.CRITICAL)
+            better = ("" if chosen_ef <= best_ef
+                      else f" · best here is {best_ef:+.2f}")
             st.markdown(
-                f"<div style='font-size:0.78rem;color:{T.TEXT_MUTED};'>"
-                f"<span style='color:{colour};font-weight:600;'>{chosen_ef:+.2f} kg CO₂e "
-                f"per kg</span> on this route · "
-                f"best available here is {best_ef:+.2f} · "
-                f"scrap value about ₹{spec['value_per_kg']:,.0f}/kg. {spec['note']}</div>",
+                f"<div style='font-size:0.8rem;color:{T.TEXT_MUTED};'>"
+                f"<span style='color:{colour};font-weight:600;'>{chosen_ef:+.2f} "
+                f"kg CO₂e/kg</span>{better}</div>",
                 unsafe_allow_html=True,
             )
 
@@ -97,11 +96,8 @@ def render(inputs: dict, profile: dict) -> None:
 
     if result.breakdown:
         st.markdown("###### Emissions and credits, by stream")
-        st.caption(
-            "Bars to the right emit. Bars to the left are credits - recycling "
-            "displaces virgin material production, so it avoids more than the "
-            "waste itself would ever have emitted."
-        )
+        st.caption("Right of zero emits. Left is a credit: recycling displaces "
+                   "new material.")
         fig, table = charts.diverging_bars(
             list(result.breakdown.items()), pos_label="emits", neg_label="avoids"
         )
@@ -132,12 +128,10 @@ def render(inputs: dict, profile: dict) -> None:
     for note in result.notes:
         C.insight(note)
 
-    C.assumptions([
-        "Negative factors are avoided emissions: recycling a kilogram of metal "
-        "saves the far larger emissions of smelting a kilogram from ore.",
-        "Landfilled organic waste is charged for methane, which traps about 28 "
-        "times more heat than CO₂ over a century - that is why food waste has by "
-        "far the worst landfill factor here.",
-        "Scrap values are indicative Indian kabadiwala rates and move with the "
-        "commodity market.",
-    ])
+    with st.expander("Assumptions"):
+        C.assumptions([
+            "Negative factors are avoided emissions - recycling displaces virgin "
+            "production.",
+            "Landfilled organics are charged for methane, ~28× worse than CO₂.",
+            "Scrap values are indicative kabadiwala rates.",
+        ])

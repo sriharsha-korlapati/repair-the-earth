@@ -9,19 +9,13 @@ from ui import charts, components as C, theme as T
 
 
 def render(inputs: dict, profile: dict) -> None:
-    C.section(
-        "🚌 Commute & travel",
-        "v1 asked for one mode and one distance. Real journeys are a chain - "
-        "auto to the gate, then a bus, then a walk - and for a hosteller the "
-        "trips home can outweigh the entire daily commute. Both are here.",
-    )
+    C.section("🚌 Commute & travel",
+              "Your daily legs, plus the trips home.")
 
     tab_daily, tab_long = st.tabs(["Daily journey", "Trips home & long distance"])
 
     with tab_daily:
-        st.caption(
-            "Add one leg per mode you use on a typical door-to-door journey."
-        )
+        st.caption("One leg per mode, door to door.")
         legs = inputs.setdefault("legs", [])
 
         remove_index: int | None = None
@@ -74,10 +68,7 @@ def render(inputs: dict, profile: dict) -> None:
         )
 
     with tab_long:
-        st.caption(
-            "Trips home, conference travel, family visits. Entered per year, "
-            "counted as return journeys."
-        )
+        st.caption("Per year, counted as return journeys.")
         trips = inputs.setdefault("intercity", [])
         remove_index = None
         for index, trip in enumerate(trips):
@@ -133,12 +124,10 @@ def render(inputs: dict, profile: dict) -> None:
     for note in result.notes:
         C.insight(note)
 
-    C.assumptions([
-        "Private vehicle factors are per vehicle-kilometre and are divided by the "
-        "number of people travelling; buses, metros and trains carry per-passenger "
-        "factors with typical Indian loading already included.",
-        "Electric modes are costed on kWh per km against your selected grid factor, "
-        "so an EV gets cleaner as the grid does - it is never assumed to be zero.",
-        "Flights exclude high-altitude radiative forcing, which some methodologies "
-        "count and which would roughly double the figure.",
-    ])
+    with st.expander("Assumptions"):
+        C.assumptions([
+            "Private vehicles are per vehicle-km, divided by occupancy. Buses, "
+            "metros and trains use per-passenger factors.",
+            "Electric modes use kWh/km against your grid factor - never zero.",
+            "Flights exclude high-altitude forcing, which would roughly double them.",
+        ])
