@@ -6,7 +6,7 @@ import streamlit as st
 
 from core import factors as F, insights, pathway as P, recommend as R
 from core.engine import Footprint, campus_scale
-from ui import charts, components as C, theme as T
+from ui import charts, components as C
 
 
 def render(fp: Footprint, profile: dict, actions: list[R.Action], plan: dict) -> None:

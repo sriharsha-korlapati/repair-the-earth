@@ -9,7 +9,7 @@ import streamlit as st
 
 from core import factors as F, recommend as R, report
 from core.engine import Footprint
-from ui import components as C, theme as T
+from ui import components as C
 
 
 def render(fp: Footprint, profile: dict, actions: list[R.Action], plan: dict) -> None:

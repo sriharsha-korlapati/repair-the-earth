@@ -5,7 +5,7 @@ from __future__ import annotations
 import streamlit as st
 
 from core import calculators, factors as F
-from ui import charts, components as C, theme as T
+from ui import components as C
 
 
 def render(inputs: dict, profile: dict) -> None:

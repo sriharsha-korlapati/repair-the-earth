@@ -6,7 +6,7 @@ import streamlit as st
 
 from core import factors as F, recommend as R
 from core.engine import Footprint
-from ui import charts, components as C, theme as T
+from ui import charts, components as C
 
 EFFORT_CLASS = {"Easy": "easy", "Medium": "medium", "Hard": "hard"}
 

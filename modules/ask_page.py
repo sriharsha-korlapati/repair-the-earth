@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from core import ai, factors as F, insights, recommend as R, vision
+from core import ai, factors as F, recommend as R, vision
 from core.engine import Footprint
 from ui import charts, components as C, mic, theme as T
 

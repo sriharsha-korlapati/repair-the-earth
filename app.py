@@ -45,7 +45,7 @@ from modules import (
     waste,
     water,
 )
-from ui import components as C, theme as T
+from ui import components as C
 
 st.set_page_config(
     page_title="Repair the Earth · Carbon Intelligence",

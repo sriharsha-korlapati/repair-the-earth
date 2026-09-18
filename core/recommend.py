@@ -22,7 +22,6 @@ from dataclasses import dataclass, field
 
 from core import factors as F
 from core.calculators import Result, grid_ef
-from core.state import household_divisor
 
 # SDG tags match the tracks on the TerraThon brief, so an action can be traced
 # straight to the goal it serves.
@@ -275,7 +274,6 @@ def _appliance_actions(inputs: dict, profile: dict, res: Result) -> list[Action]
 
 def _commute_actions(inputs: dict, profile: dict, res: Result) -> list[Action]:
     out: list[Action] = []
-    PUBLIC = {"City bus", "Metro / local train"}
     HIGH_CARBON = {"Car (petrol)", "Car (diesel)", "Car (CNG)",
                    "Cab / ride-hail (Ola, Uber)", "Bike taxi (Rapido)",
                    "Auto rickshaw (CNG)", "Scooter (petrol)", "Motorcycle (petrol)"}

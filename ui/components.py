@@ -169,7 +169,7 @@ def meter(label: str, fraction: float, color: str | None = None,
     st.markdown(
         f"""
         <div style="margin-bottom:0.7rem;">
-          <div style="display:flex;justify-content:space-between;font-size:0.78rem;
+          <div style="display:flex;justify-content:space-between;gap:10px;font-size:0.83rem;
                color:{T.TEXT_MUTED};margin-bottom:4px;">
             <span>{html.escape(label)}</span><span>{html.escape(right_text)}</span>
           </div>
