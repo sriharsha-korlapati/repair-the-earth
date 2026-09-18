@@ -118,7 +118,7 @@ p, li, label, .stMarkdown {{ color: var(--text-2); }}
 }}
 .rte-sub {{ color: var(--text-muted); font-size: 0.8rem; margin: 1px 0 0 0; line-height: 1.35; }}
 .rte-badge {{
-  display: inline-block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+  display: inline-block; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.06em;
   text-transform: uppercase; padding: 2px 7px; border-radius: 999px;
   background: rgba(34,197,94,0.14); color: var(--accent);
   border: 1px solid rgba(34,197,94,0.35); white-space: nowrap;
@@ -161,7 +161,7 @@ p, li, label, .stMarkdown {{ color: var(--text-2); }}
   gap: 14px; flex-wrap: wrap;
 }}
 .hero-label {{
-  color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase;
+  color: var(--text-muted); font-size: 0.83rem; text-transform: uppercase;
   letter-spacing: 0.07em;
 }}
 .hero-value {{

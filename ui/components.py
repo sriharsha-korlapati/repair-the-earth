@@ -140,8 +140,8 @@ def hero(label: str, value: str, unit: str, note: str,
           <div style="text-align:right;">
             <div class="grade-chip" style="background:{color}22;color:{color};
                  border:1px solid {color}55;">{html.escape(letter)}</div>
-            <div style="color:{T.TEXT_MUTED};font-size:0.72rem;max-width:190px;
-                 margin-top:6px;">{html.escape(desc)}</div>
+            <div style="color:{T.TEXT_MUTED};font-size:0.82rem;max-width:210px;
+                 margin-top:6px;line-height:1.35;">{html.escape(desc)}</div>
           </div>"""
     st.markdown(
         f"""
