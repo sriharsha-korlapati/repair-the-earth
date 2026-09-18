@@ -12,8 +12,10 @@ font = "sans serif"
 
 [server]
 headless = true
-enableCORS = false
-enableXsrfProtection = false
+# CORS and XSRF protection are left at their secure defaults. v1 disabled both,
+# which is a habit picked up from local tunnelling; on a public host it weakens
+# the app for no benefit. Streamlit Community Cloud sets its own server config
+# anyway, so nothing here is load-bearing for deployment.
 
 [browser]
 gatherUsageStats = false
